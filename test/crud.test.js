@@ -113,3 +113,59 @@ describe("Phase 2.5 — Goal CRUD (Direct Firestore verification)", () => {
     console.log("  [Goal CRUD] Deleted goal successfully. Document exists:", deletedSnap.exists);
   });
 });
+
+describe("Phase 2.6 — Habit CRUD and completionHistory map (Direct Firestore verification)", () => {
+  it("writes, reads, updates completionHistory map and deletes Habit", async () => {
+    const db = testEnv.authenticatedContext("user_test_1").firestore();
+    const habitRef = db.doc("users/user_test_1/habits/habit_crud_1");
+
+    // 1. CREATE
+    const sampleHabit = {
+      id: "habit_crud_1",
+      userId: "user_test_1",
+      name: "Daily Sound Design (30m)",
+      frequency: "daily",
+      preferredTime: "08:00",
+      streak: 3,
+      completionHistory: {
+        "2026-08-14": true,
+        "2026-08-15": true,
+        "2026-08-16": true,
+      },
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    await assertSucceeds(habitRef.set(sampleHabit));
+    console.log("  [Habit CRUD] Created habit successfully:", sampleHabit.id);
+
+    // 2. READ & VERIFY MAP SHAPE
+    const fetchedSnap = await habitRef.get();
+    if (!fetchedSnap.exists) throw new Error("Habit not found");
+    const fetchedData = fetchedSnap.data();
+    console.log("  [Habit CRUD] Read completionHistory keys:", Object.keys(fetchedData.completionHistory));
+    if (fetchedData.completionHistory["2026-08-15"] !== true) {
+      throw new Error("completionHistory map shape is invalid");
+    }
+
+    // 3. UPDATE / TOGGLE DATE
+    const updatedHistory = {
+      ...fetchedData.completionHistory,
+      "2026-08-17": true,
+    };
+    const updatedHabit = {
+      ...fetchedData,
+      completionHistory: updatedHistory,
+      streak: 4,
+      updatedAt: Date.now(),
+    };
+    await assertSucceeds(habitRef.set(updatedHabit));
+    console.log("  [Habit CRUD] Updated completionHistory, new streak:", updatedHabit.streak);
+
+    // 4. DELETE
+    await assertSucceeds(habitRef.delete());
+    const deletedSnap = await habitRef.get();
+    if (deletedSnap.exists) throw new Error("Habit still exists after delete");
+    console.log("  [Habit CRUD] Deleted habit successfully. Document exists:", deletedSnap.exists);
+  });
+});
+

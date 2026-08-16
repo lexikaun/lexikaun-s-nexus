@@ -311,6 +311,83 @@ export function subscribeToHabits(userId: string, callback: (habits: Habit[]) =>
   }
 }
 
+export async function createHabit(userId: string, habit: Habit): Promise<Habit> {
+  const habitWithTimestamps: Habit = {
+    ...habit,
+    userId,
+    completionHistory: habit.completionHistory || {},
+    streak: habit.streak || 0,
+    createdAt: habit.createdAt || Date.now(),
+    updatedAt: Date.now(),
+  };
+  await saveHabit(userId, habitWithTimestamps);
+  return habitWithTimestamps;
+}
+
+export async function getHabit(userId: string, habitId: string): Promise<Habit | null> {
+  if (auth.currentUser && auth.currentUser.uid === userId) {
+    try {
+      const snap = await getDoc(doc(db, 'users', userId, 'habits', habitId));
+      if (snap.exists()) {
+        return snap.data() as Habit;
+      }
+    } catch (err) {
+      console.warn('Firestore getHabit error, falling back to local cache:', err);
+    }
+  }
+  const localHabits = loadLocal<Habit[]>(`habits_${userId}`, []);
+  return localHabits.find((h) => h.id === habitId) || null;
+}
+
+export async function getHabits(userId: string): Promise<Habit[]> {
+  if (auth.currentUser && auth.currentUser.uid === userId) {
+    try {
+      const snap = await getDocs(collection(db, 'users', userId, 'habits'));
+      if (!snap.empty) {
+        const habits = snap.docs.map((d) => d.data() as Habit);
+        saveLocal(`habits_${userId}`, habits);
+        return habits;
+      }
+    } catch (err) {
+      console.warn('Firestore getHabits error, falling back to local cache:', err);
+    }
+  }
+  return loadLocal<Habit[]>(`habits_${userId}`, []);
+}
+
+export async function updateHabit(userId: string, habitId: string, updates: Partial<Habit>): Promise<Habit> {
+  const existingHabit = await getHabit(userId, habitId);
+  const updatedHabit: Habit = {
+    ...(existingHabit || {
+      id: habitId,
+      userId,
+      name: '',
+      frequency: 'daily',
+      streak: 0,
+      completionHistory: {},
+    }),
+    ...updates,
+    id: habitId,
+    userId,
+    updatedAt: Date.now(),
+  };
+  await saveHabit(userId, updatedHabit);
+  return updatedHabit;
+}
+
+export async function toggleHabitDate(userId: string, habitId: string, date: string): Promise<Habit> {
+  const habit = await getHabit(userId, habitId);
+  if (!habit) throw new Error(`Habit not found: ${habitId}`);
+  const currentHistory = habit.completionHistory || {};
+  const isCurrentlyDone = !!currentHistory[date];
+  const newHistory = { ...currentHistory, [date]: !isCurrentlyDone };
+  return updateHabit(userId, habitId, { completionHistory: newHistory });
+}
+
+export async function deleteHabit(userId: string, habitId: string): Promise<void> {
+  return deleteHabitDoc(userId, habitId);
+}
+
 export async function saveHabit(userId: string, habit: Habit): Promise<void> {
   const current = loadLocal<Habit[]>(`habits_${userId}`, []);
   const idx = current.findIndex((h) => h.id === habit.id);
