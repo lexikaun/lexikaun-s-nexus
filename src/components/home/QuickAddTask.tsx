@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Clock, Tag, Target, FileText, X, Check, Plus, ChevronDown } from 'lucide-react';
-import { Priority, Goal, Task } from '../../types';
+import { Clock, Target, X, Plus, ChevronDown, Check } from 'lucide-react';
+import { Priority, Goal } from '../../types';
 
 export interface QuickAddTaskProps {
   dateStr: string;
@@ -9,10 +9,10 @@ export interface QuickAddTaskProps {
   onSave: (taskData: {
     title: string;
     date: string;
-    startTime: string;
-    endTime: string;
+    startTime?: string;
+    endTime?: string;
     durationMinutes?: number;
-    priority: Priority;
+    priority?: Priority;
     goalId?: string;
     notes?: string;
   }) => Promise<void> | void;
@@ -27,38 +27,68 @@ export const QuickAddTask: React.FC<QuickAddTaskProps> = ({
   onCancel,
 }) => {
   const [title, setTitle] = useState('');
-  const [isScheduled, setIsScheduled] = useState(true);
-  const [startTime, setStartTime] = useState('09:00');
-  const [endTime, setEndTime] = useState('10:00');
-  const [priority, setPriority] = useState<Priority>('medium');
+  const [duration, setDuration] = useState<number>(30);
+  const [startTime, setStartTime] = useState<string>('');
   const [goalId, setGoalId] = useState<string>('');
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showGoalPicker, setShowGoalPicker] = useState(false);
   const [isCreatingGoal, setIsCreatingGoal] = useState(false);
   const [newGoalTitle, setNewGoalTitle] = useState('');
-  const [notes, setNotes] = useState('');
-  const [showDetails, setShowDetails] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const titleInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    titleInputRef.current?.focus();
+    inputRef.current?.focus();
   }, []);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const calculateEndTime = (start: string, durationMins: number): string => {
+    if (!start) return '';
+    const [h, m] = start.split(':').map(Number);
+    const totalMinutes = (h * 60 + (m || 0) + durationMins) % (24 * 60);
+    const endH = Math.floor(totalMinutes / 60);
+    const endM = totalMinutes % 60;
+    return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+  };
+
+  const handleKeyDown = async (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
-      onCancel();
+      if (showTimePicker) {
+        setShowTimePicker(false);
+      } else if (showGoalPicker) {
+        setShowGoalPicker(false);
+      } else {
+        onCancel();
+      }
     } else if (e.key === 'Enter' && !e.shiftKey && !isCreatingGoal) {
       e.preventDefault();
-      handleSubmit();
+      await handleSubmit();
     }
   };
 
-  const handleDurationPreset = (minutes: number) => {
-    const [h, m] = startTime.split(':').map(Number);
-    const totalMinutes = (h * 60 + (m || 0) + minutes) % (24 * 60);
-    const newH = Math.floor(totalMinutes / 60);
-    const newM = totalMinutes % 60;
-    setEndTime(`${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`);
+  const handleSubmit = async () => {
+    if (!title.trim() || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const endTime = startTime ? calculateEndTime(startTime, duration) : '';
+      await onSave({
+        title: title.trim(),
+        date: dateStr,
+        startTime: startTime || '',
+        endTime: endTime || '',
+        durationMinutes: duration,
+        priority: 'medium',
+        goalId: goalId || undefined,
+      });
+
+      // Clear input and keep focused for frictionless Sunsama continuous entry
+      setTitle('');
+      inputRef.current?.focus();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCreateNewGoalSubmit = async () => {
@@ -67,220 +97,211 @@ export const QuickAddTask: React.FC<QuickAddTaskProps> = ({
     setGoalId(createdId);
     setNewGoalTitle('');
     setIsCreatingGoal(false);
+    setShowGoalPicker(false);
+    inputRef.current?.focus();
   };
 
-  const handleSubmit = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!title.trim() || isSubmitting) return;
-
-    setIsSubmitting(true);
-    try {
-      await onSave({
-        title: title.trim(),
-        date: dateStr,
-        startTime: isScheduled ? startTime : '',
-        endTime: isScheduled ? endTime : '',
-        priority,
-        goalId: goalId || undefined,
-        notes: notes.trim() || undefined,
-      });
-      setTitle('');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  const selectedGoal = goals.find((g) => g.id === goalId);
 
   return (
-    <div className="p-3 bg-surface hairline-border rounded-xl shadow-xl space-y-2.5 animate-in fade-in zoom-in-95 duration-150 select-none">
-      {/* Title Input */}
-      <div className="relative">
+    <div
+      ref={containerRef}
+      className="p-2.5 bg-surface/90 border border-red-main/40 rounded-xl shadow-lg transition-all duration-150 animate-in fade-in zoom-in-95 space-y-2 select-none"
+    >
+      {/* 1. Sunsama Minimalist Title Input */}
+      <div className="flex items-center gap-2">
+        <div className="w-3.5 h-3.5 rounded border border-border-main/60 shrink-0 opacity-40" />
         <input
-          ref={titleInputRef}
+          ref={inputRef}
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Task title... (Enter to save)"
-          className="w-full bg-bg-main/80 text-text-main text-xs rounded-md px-2.5 py-2 border border-border-main/60 focus:border-red-main focus:outline-none placeholder:text-text-secondary/50 font-medium"
+          placeholder="What needs to be done? (Enter to save)"
+          className="w-full bg-transparent text-xs text-text-main placeholder:text-text-secondary/50 font-normal focus:outline-none"
         />
-      </div>
-
-      {/* Primary Timing Controls */}
-      <div className="flex items-center justify-between text-xs gap-1.5 flex-wrap">
-        <div className="flex items-center gap-1">
+        {title.trim() && (
           <button
             type="button"
-            onClick={() => setIsScheduled(!isScheduled)}
-            className={`px-2 py-1 rounded text-[11px] font-mono transition-colors cursor-pointer ${
-              isScheduled
-                ? 'bg-red-main/15 border border-red-main/30 text-text-main font-medium'
-                : 'bg-surface/60 border border-border-main/40 text-text-secondary hover:text-text-main'
-            }`}
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="px-1.5 py-0.5 rounded bg-red-main/20 hover:bg-red-main text-red-main hover:text-white text-[10px] font-mono font-medium transition-colors shrink-0 cursor-pointer flex items-center gap-1"
           >
-            {isScheduled ? 'Scheduled' : 'Unscheduled'}
+            <span>↵</span>
           </button>
+        )}
+      </div>
 
-          {isScheduled && (
-            <div className="flex items-center gap-1 bg-bg-main/60 px-1.5 py-0.5 rounded border border-border-main/40 font-mono text-[11px]">
+      {/* 2. Quiet Inline Attribute Chips */}
+      <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-border-main/30 text-[11px] font-mono">
+        {/* Quick Duration Chips */}
+        <div className="flex items-center gap-1">
+          {[15, 30, 60, 120].map((mins) => {
+            const label = mins < 60 ? `${mins}m` : `${mins / 60}h`;
+            const isSelected = duration === mins;
+            return (
+              <button
+                key={mins}
+                type="button"
+                onClick={() => setDuration(mins)}
+                className={`px-1.5 py-0.5 rounded transition-colors cursor-pointer text-[10px] ${
+                  isSelected
+                    ? 'bg-red-main/20 text-red-main border border-red-main/40 font-medium'
+                    : 'bg-surface/50 border border-border-main/40 text-text-secondary hover:text-text-main'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Start Time Pill */}
+        <div className="relative">
+          {startTime ? (
+            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface border border-border-main/60 text-text-main text-[10px]">
+              <Clock className="w-2.5 h-2.5 text-red-main" />
+              <span>{startTime}</span>
+              <button
+                type="button"
+                onClick={() => setStartTime('')}
+                className="text-text-secondary hover:text-text-main ml-0.5"
+              >
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowTimePicker(!showTimePicker)}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface/50 border border-border-main/40 text-text-secondary hover:text-text-main transition-colors cursor-pointer text-[10px]"
+            >
+              <Clock className="w-2.5 h-2.5" />
+              <span>+ Time</span>
+            </button>
+          )}
+
+          {showTimePicker && (
+            <div className="absolute left-0 top-full mt-1 z-30 p-2 bg-surface border border-border-main/60 rounded-lg shadow-xl flex items-center gap-1">
               <input
                 type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="bg-transparent text-text-main focus:outline-none cursor-pointer w-16"
+                value={startTime || '09:00'}
+                onChange={(e) => {
+                  setStartTime(e.target.value);
+                  setShowTimePicker(false);
+                  inputRef.current?.focus();
+                }}
+                className="bg-bg-main text-text-main text-xs px-1.5 py-1 rounded border border-border-main/50 focus:outline-none"
+                autoFocus
               />
-              <span className="text-text-secondary/60">-</span>
-              <input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className="bg-transparent text-text-main focus:outline-none cursor-pointer w-16"
-              />
+              <button
+                type="button"
+                onClick={() => setShowTimePicker(false)}
+                className="p-1 text-text-secondary hover:text-text-main"
+              >
+                <X className="w-3 h-3" />
+              </button>
             </div>
           )}
         </div>
 
-        {/* Priority Selector */}
-        <select
-          value={priority}
-          onChange={(e) => setPriority(e.target.value as Priority)}
-          className="bg-bg-main/60 text-text-main text-[11px] font-mono px-2 py-1 rounded border border-border-main/40 focus:outline-none cursor-pointer"
-        >
-          <option value="low">Low</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-          <option value="critical">Critical</option>
-        </select>
-      </div>
-
-      {/* Duration shortcut chips if scheduled */}
-      {isScheduled && (
-        <div className="flex items-center gap-1 text-[10px] font-mono text-text-secondary">
-          <span>Duration:</span>
-          {[15, 30, 45, 60, 90].map((mins) => (
+        {/* Goal Tag Pill */}
+        <div className="relative">
+          {selectedGoal ? (
+            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-main/10 border border-red-main/30 text-text-main text-[10px]">
+              <Target className="w-2.5 h-2.5 text-red-main" />
+              <span className="max-w-[80px] truncate">{selectedGoal.title}</span>
+              <button
+                type="button"
+                onClick={() => setGoalId('')}
+                className="text-text-secondary hover:text-text-main ml-0.5"
+              >
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </div>
+          ) : (
             <button
-              key={mins}
               type="button"
-              onClick={() => handleDurationPreset(mins)}
-              className="px-1.5 py-0.5 rounded bg-surface hover:bg-surface/80 border border-border-main/40 hover:border-text-secondary/40 text-text-secondary hover:text-text-main transition-colors cursor-pointer"
+              onClick={() => setShowGoalPicker(!showGoalPicker)}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface/50 border border-border-main/40 text-text-secondary hover:text-text-main transition-colors cursor-pointer text-[10px]"
             >
-              {mins}m
+              <Target className="w-2.5 h-2.5" />
+              <span>+ Goal</span>
             </button>
-          ))}
-        </div>
-      )}
+          )}
 
-      {/* Toggle Details (Goal & Notes) */}
-      <div>
-        <button
-          type="button"
-          onClick={() => setShowDetails(!showDetails)}
-          className="text-[11px] text-text-secondary hover:text-text-main flex items-center gap-1 transition-colors cursor-pointer"
-        >
-          <ChevronDown
-            className={`w-3 h-3 transition-transform ${showDetails ? 'rotate-180' : ''}`}
-          />
-          <span>{showDetails ? 'Hide Goal & Notes' : '+ Goal & Notes'}</span>
-        </button>
-
-        {showDetails && (
-          <div className="mt-2 space-y-2 pt-2 border-t border-border-main/30 text-xs">
-            {/* Goal Link with Inline Creation */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <label className="text-[10px] uppercase font-mono text-text-secondary flex items-center gap-1">
-                  <Target className="w-2.5 h-2.5 text-red-main" />
-                  Link to Goal
-                </label>
-                {onCreateGoal && !isCreatingGoal && (
-                  <button
-                    type="button"
-                    onClick={() => setIsCreatingGoal(true)}
-                    className="text-[10px] text-red-main hover:underline flex items-center gap-0.5 cursor-pointer"
-                  >
-                    <Plus className="w-2.5 h-2.5" />
-                    New
-                  </button>
-                )}
+          {showGoalPicker && (
+            <div className="absolute left-0 top-full mt-1 z-30 w-48 p-1.5 bg-surface border border-border-main/60 rounded-lg shadow-xl space-y-1">
+              <div className="text-[9px] uppercase font-mono text-text-secondary px-1 py-0.5">
+                Link to Goal
               </div>
 
+              {goals.map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => {
+                    setGoalId(g.id);
+                    setShowGoalPicker(false);
+                    inputRef.current?.focus();
+                  }}
+                  className="w-full text-left px-2 py-1 rounded text-xs text-text-main hover:bg-bg-main flex items-center justify-between transition-colors"
+                >
+                  <span className="truncate">{g.title}</span>
+                  {goalId === g.id && <Check className="w-3 h-3 text-red-main" />}
+                </button>
+              ))}
+
               {isCreatingGoal ? (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 pt-1 border-t border-border-main/40">
                   <input
                     type="text"
                     value={newGoalTitle}
                     onChange={(e) => setNewGoalTitle(e.target.value)}
-                    placeholder="Goal title..."
-                    className="flex-1 bg-bg-main/90 text-text-main text-xs rounded px-2 py-1 border border-red-main/50 focus:outline-none"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleCreateNewGoalSubmit();
+                      if (e.key === 'Escape') setIsCreatingGoal(false);
+                    }}
+                    placeholder="New goal title..."
+                    className="flex-1 bg-bg-main text-text-main text-[11px] rounded px-1.5 py-1 border border-border-main/50 focus:outline-none"
                     autoFocus
                   />
                   <button
                     type="button"
                     onClick={handleCreateNewGoalSubmit}
                     disabled={!newGoalTitle.trim()}
-                    className="px-2 py-1 rounded bg-red-main text-white text-xs disabled:opacity-40"
+                    className="px-1.5 py-1 rounded bg-red-main text-white text-[10px] disabled:opacity-40"
                   >
                     Add
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsCreatingGoal(false)}
-                    className="px-1.5 py-1 text-text-secondary hover:text-text-main"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
                 </div>
               ) : (
-                <select
-                  value={goalId}
-                  onChange={(e) => setGoalId(e.target.value)}
-                  className="w-full bg-bg-main/80 text-text-main text-xs rounded px-2 py-1.5 border border-border-main/40 focus:outline-none cursor-pointer"
-                >
-                  <option value="">None (Stand-alone task)</option>
-                  {goals.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.title}
-                    </option>
-                  ))}
-                </select>
+                onCreateGoal && (
+                  <button
+                    type="button"
+                    onClick={() => setIsCreatingGoal(true)}
+                    className="w-full text-left px-2 py-1 rounded text-[11px] text-red-main hover:bg-red-main/10 flex items-center gap-1 transition-colors"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Create Goal...</span>
+                  </button>
+                )
               )}
             </div>
+          )}
+        </div>
 
-            {/* Notes */}
-            <div className="space-y-1">
-              <label className="text-[10px] uppercase font-mono text-text-secondary flex items-center gap-1">
-                <FileText className="w-2.5 h-2.5" />
-                Notes / Sub-tasks
-              </label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Optional context, checklist items, or links..."
-                rows={2}
-                className="w-full bg-bg-main/80 text-text-main text-xs rounded px-2 py-1.5 border border-border-main/40 focus:border-red-main focus:outline-none placeholder:text-text-secondary/40 resize-none font-sans"
-              />
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Footer Action Buttons */}
-      <div className="flex items-center justify-end gap-2 pt-1 border-t border-border-main/40">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-2.5 py-1 rounded text-xs text-text-secondary hover:text-text-main hover:bg-surface/80 transition-colors cursor-pointer"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={() => handleSubmit()}
-          disabled={!title.trim() || isSubmitting}
-          className="flex items-center gap-1 px-3 py-1 rounded bg-red-main hover:bg-red-hover text-white text-xs font-medium transition-all disabled:opacity-40 disabled:pointer-events-none cursor-pointer shadow-sm"
-        >
-          <Check className="w-3.5 h-3.5" />
-          <span>Save Task</span>
-        </button>
+        {/* Escape Hint / Close Button */}
+        <div className="ml-auto flex items-center gap-1 text-[9px] text-text-secondary">
+          <span className="opacity-60">esc to close</span>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="p-0.5 rounded hover:bg-surface text-text-secondary hover:text-text-main cursor-pointer"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </div>
       </div>
     </div>
   );

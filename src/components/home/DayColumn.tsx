@@ -19,10 +19,10 @@ export interface DayColumnProps {
   onSaveNewTask?: (taskData: {
     title: string;
     date: string;
-    startTime: string;
-    endTime: string;
+    startTime?: string;
+    endTime?: string;
     durationMinutes?: number;
-    priority: any;
+    priority?: any;
     goalId?: string;
     notes?: string;
   }) => Promise<void> | void;
@@ -108,7 +108,6 @@ export const DayColumn: React.FC<DayColumnProps> = ({
     if (onSaveNewTask) {
       await onSaveNewTask(taskData);
     }
-    handleCloseAdd();
   };
 
   return (
@@ -158,32 +157,10 @@ export const DayColumn: React.FC<DayColumnProps> = ({
             {completedTasks}/{totalTasks} ({progressPercent}%)
           </span>
         </div>
-
-        {/* Quick Add Task Button */}
-        <button
-          onClick={handleOpenAdd}
-          className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md bg-surface/60 hover:bg-surface border border-border-main/40 hover:border-border-main text-xs font-medium text-text-secondary hover:text-text-main transition-all cursor-pointer group"
-        >
-          <Plus className="w-3.5 h-3.5 text-text-secondary group-hover:text-red-main transition-colors" />
-          <span>Add task</span>
-        </button>
       </div>
 
-      {/* Column Content: QuickAdd popover/row + Scheduled + Unscheduled sections */}
+      {/* Column Content: Scheduled + Unscheduled sections + Sunsama Inline Add */}
       <div className="flex-1 overflow-y-auto p-3 space-y-4">
-        {/* Inline Quick Add Task Form */}
-        {showQuickAdd && (
-          <div className="mb-3">
-            <QuickAddTask
-              dateStr={dateStr}
-              goals={goals}
-              onCreateGoal={onCreateGoal}
-              onSave={handleSave}
-              onCancel={handleCloseAdd}
-            />
-          </div>
-        )}
-
         {/* 1. Scheduled Tasks Section */}
         <div className="space-y-2">
           <div className="flex items-center justify-between px-1">
@@ -197,11 +174,8 @@ export const DayColumn: React.FC<DayColumnProps> = ({
           </div>
 
           {scheduledTasks.length === 0 ? (
-            <div className="p-3.5 rounded-lg bg-surface/20 border border-dashed border-border-main/40 text-center space-y-1">
-              <p className="text-xs text-text-secondary">No scheduled blocks</p>
-              <p className="text-[11px] text-text-secondary/60">
-                Tasks with specific hours land here
-              </p>
+            <div className="p-3 rounded-lg bg-surface/20 border border-dashed border-border-main/30 text-center">
+              <p className="text-[11px] text-text-secondary/60">No scheduled time blocks</p>
             </div>
           ) : (
             <div className="space-y-1.5">
@@ -229,21 +203,14 @@ export const DayColumn: React.FC<DayColumnProps> = ({
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-1.5 text-[10px] uppercase font-mono tracking-wider text-text-secondary">
               <Inbox className="w-3 h-3 text-text-secondary" />
-              <span>Unscheduled</span>
+              <span>Tasks</span>
             </div>
             <span className="text-[10px] font-mono text-text-secondary">
-              {unscheduledTasks.length} tasks
+              {unscheduledTasks.length} {unscheduledTasks.length === 1 ? 'task' : 'tasks'}
             </span>
           </div>
 
-          {unscheduledTasks.length === 0 ? (
-            <div className="p-3.5 rounded-lg bg-surface/20 border border-dashed border-border-main/40 text-center space-y-1">
-              <p className="text-xs text-text-secondary">No unscheduled items</p>
-              <p className="text-[11px] text-text-secondary/60">
-                Tasks for this day without fixed hours
-              </p>
-            </div>
-          ) : (
+          {unscheduledTasks.length > 0 && (
             <div className="space-y-1.5">
               {unscheduledTasks.map((task) => (
                 <TaskCard
@@ -261,6 +228,28 @@ export const DayColumn: React.FC<DayColumnProps> = ({
                 />
               ))}
             </div>
+          )}
+
+          {/* Sunsama Inline Creation Card */}
+          {showQuickAdd ? (
+            <div className="pt-1">
+              <QuickAddTask
+                dateStr={dateStr}
+                goals={goals}
+                onCreateGoal={onCreateGoal}
+                onSave={handleSave}
+                onCancel={handleCloseAdd}
+              />
+            </div>
+          ) : (
+            /* Lightweight inline "+ Add task" trigger button */
+            <button
+              onClick={handleOpenAdd}
+              className="w-full flex items-center gap-2 py-2 px-3 rounded-lg border border-transparent hover:border-border-main/50 hover:bg-surface/50 text-xs font-normal text-text-secondary hover:text-text-main transition-all cursor-pointer group text-left"
+            >
+              <Plus className="w-3.5 h-3.5 text-text-secondary group-hover:text-red-main transition-colors shrink-0" />
+              <span className="text-text-secondary/70 group-hover:text-text-main">Add task</span>
+            </button>
           )}
         </div>
       </div>
