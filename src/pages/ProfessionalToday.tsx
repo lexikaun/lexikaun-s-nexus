@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Card } from '../components/ui/Card';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
-import { CheckCircle, Plus, Calendar, Disc, Trash2, Edit2, Clock, Check } from 'lucide-react';
+import { CheckCircle, Plus, Calendar, Disc, Trash2, Edit2, Clock, Check, RotateCw, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/useAuth';
 import {
   subscribeToTasks,
@@ -12,13 +11,15 @@ import {
   updateTask,
   deleteTask,
 } from '../services/db';
-import { Task, Goal, Priority } from '../types';
+import { expandRecurringTask } from '../utils/recurrence';
+import { generateSmartRescheduleSuggestion } from '../utils/smartReschedule';
+import { Task, Goal, Priority, RecurrenceType, SmartRescheduleSuggestion } from '../types';
 
 export const ProfessionalToday: React.FC = () => {
   const { user } = useAuth();
   const userId = user?.uid || 'local-producer-01';
 
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [rawTasks, setRawTasks] = useState<Task[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -30,13 +31,19 @@ export const ProfessionalToday: React.FC = () => {
   const [taskEndTime, setTaskEndTime] = useState('12:00');
   const [taskPriority, setTaskPriority] = useState<Priority>('high');
   const [selectedGoalId, setSelectedGoalId] = useState<string>('');
+  const [taskRecurrence, setTaskRecurrence] = useState<RecurrenceType>('none');
+
+  // Smart Reschedule State
+  const [rescheduleTask, setRescheduleTask] = useState<Task | null>(null);
+  const [actualMinutesWorked, setActualMinutesWorked] = useState<number>(30);
+  const [rescheduleSuggestion, setRescheduleSuggestion] = useState<SmartRescheduleSuggestion | null>(null);
 
   const todayStr = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
     const unsubTasks = subscribeToTasks(userId, (loadedTasks) => {
       const profTasks = loadedTasks.filter((t) => t.space === 'professional' || (!t.space && t.associatedBeatId));
-      setTasks(profTasks);
+      setRawTasks(profTasks);
     });
 
     const unsubGoals = subscribeToGoals(userId, (loadedGoals) => {
@@ -48,6 +55,20 @@ export const ProfessionalToday: React.FC = () => {
       unsubGoals();
     };
   }, [userId]);
+
+  // Expand recurring tasks for today's view
+  const tasks = useMemo(() => {
+    const todayList: Task[] = [];
+    for (const t of rawTasks) {
+      if (t.recurrence && t.recurrence !== 'none') {
+        const occurrences = expandRecurringTask(t, todayStr, todayStr);
+        todayList.push(...occurrences);
+      } else if (t.date === todayStr || !t.date) {
+        todayList.push(t);
+      }
+    }
+    return todayList;
+  }, [rawTasks, todayStr]);
 
   const handleSaveTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,6 +82,7 @@ export const ProfessionalToday: React.FC = () => {
         endTime: taskEndTime,
         priority: taskPriority,
         goalId: selectedGoalId || undefined,
+        recurrence: taskRecurrence === 'none' ? undefined : taskRecurrence,
       });
       setEditingTask(null);
     } else {
@@ -75,6 +97,7 @@ export const ProfessionalToday: React.FC = () => {
         priority: taskPriority,
         status: 'planned',
         goalId: selectedGoalId || undefined,
+        recurrence: taskRecurrence === 'none' ? undefined : taskRecurrence,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
@@ -105,7 +128,53 @@ export const ProfessionalToday: React.FC = () => {
     setTaskEndTime(task.endTime || '12:00');
     setTaskPriority(task.priority || 'high');
     setSelectedGoalId(task.goalId || '');
+    setTaskRecurrence((typeof task.recurrence === 'string' ? task.recurrence : task.recurrence?.freq) || 'none');
     setIsAddTaskOpen(true);
+  };
+
+  const handleOpenReschedule = (task: Task) => {
+    setRescheduleTask(task);
+    setActualMinutesWorked(30);
+    const suggestion = generateSmartRescheduleSuggestion(task, 30);
+    setRescheduleSuggestion(suggestion);
+  };
+
+  const handleActualMinutesChange = (mins: number) => {
+    setActualMinutesWorked(mins);
+    if (rescheduleTask) {
+      const suggestion = generateSmartRescheduleSuggestion(rescheduleTask, mins);
+      setRescheduleSuggestion(suggestion);
+    }
+  };
+
+  const handleApplyReschedule = async () => {
+    if (!rescheduleTask || !rescheduleSuggestion) return;
+
+    await updateTask(userId, rescheduleTask.id, {
+      status: 'completed',
+      actualDurationMinutes: actualMinutesWorked,
+      completedAt: Date.now(),
+      notes: `Partial session completed: ${actualMinutesWorked}m. Remaining ${rescheduleSuggestion.unfinishedMinutes}m rescheduled.`,
+    });
+
+    const followUpTask: Task = {
+      id: 'task_' + Date.now(),
+      userId,
+      space: 'professional',
+      title: `${rescheduleTask.title} (Remaining Part)`,
+      date: rescheduleSuggestion.targetDate,
+      startTime: rescheduleSuggestion.suggestedStartTime,
+      endTime: rescheduleSuggestion.suggestedEndTime,
+      priority: rescheduleTask.priority,
+      status: 'planned',
+      goalId: rescheduleTask.goalId,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    await createTask(userId, followUpTask);
+
+    setRescheduleTask(null);
+    setRescheduleSuggestion(null);
   };
 
   // Find the active / in-progress or first upcoming task
@@ -236,6 +305,7 @@ export const ProfessionalToday: React.FC = () => {
             {tasks.map((item) => {
               const isDone = item.status === 'completed';
               const linkedGoal = goals.find((g) => g.id === item.goalId);
+              const isRecurring = !!item.recurrence && item.recurrence !== 'none';
               return (
                 <div
                   key={item.id}
@@ -256,9 +326,14 @@ export const ProfessionalToday: React.FC = () => {
                       {item.startTime} – {item.endTime}
                     </span>
                     <div>
-                      <h3 className={`text-sm font-normal ${isDone ? 'text-text-secondary line-through' : 'text-text-main'}`}>
-                        {item.title}
-                      </h3>
+                      <div className="flex items-center gap-1.5">
+                        <h3 className={`text-sm font-normal ${isDone ? 'text-text-secondary line-through' : 'text-text-main'}`}>
+                          {item.title}
+                        </h3>
+                        {isRecurring && (
+                          <RotateCw className="w-3 h-3 text-text-secondary shrink-0" title="Recurring Routine" />
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 text-xs text-text-secondary mt-0.5">
                         {linkedGoal && <span>{linkedGoal.title}</span>}
                         {linkedGoal && <span>•</span>}
@@ -272,6 +347,15 @@ export const ProfessionalToday: React.FC = () => {
                       {isDone ? 'Done' : item.status === 'in_progress' ? 'Active' : 'Planned'}
                     </span>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pl-2">
+                      {!isDone && (
+                        <button
+                          onClick={() => handleOpenReschedule(item)}
+                          className="p-1 hover:text-red-main text-text-secondary cursor-pointer"
+                          title="Partial completion / Smart reschedule"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       <button
                         onClick={() => handleOpenEdit(item)}
                         className="p-1 hover:text-text-main text-text-secondary cursor-pointer"
@@ -310,6 +394,29 @@ export const ProfessionalToday: React.FC = () => {
             required
             autoFocus
           />
+
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Scheduled Date"
+              type="date"
+              value={taskDate}
+              onChange={(e) => setTaskDate(e.target.value)}
+              required
+            />
+            <div className="space-y-1.5">
+              <label className="text-xs text-text-secondary font-medium">Recurrence</label>
+              <select
+                value={taskRecurrence}
+                onChange={(e) => setTaskRecurrence(e.target.value as RecurrenceType)}
+                className="w-full bg-surface border border-border-main rounded-md px-3 py-2 text-sm text-text-main focus:outline-none focus:border-red-main"
+              >
+                <option value="none">One-time (No Recurrence)</option>
+                <option value="daily">Daily</option>
+                <option value="weekdays">Weekdays (Mon-Fri)</option>
+                <option value="weekly">Weekly (Every 7 days)</option>
+              </select>
+            </div>
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <Input
@@ -370,7 +477,69 @@ export const ProfessionalToday: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Smart Reschedule Modal */}
+      <Modal
+        isOpen={!!rescheduleTask}
+        onClose={() => setRescheduleTask(null)}
+        title="Smart Partial Rescheduling"
+      >
+        {rescheduleTask && (
+          <div className="space-y-4">
+            <div className="p-3 bg-surface hairline-border rounded-lg space-y-1">
+              <div className="text-xs text-text-secondary">Selected Task</div>
+              <div className="text-sm font-medium text-text-main">{rescheduleTask.title}</div>
+              <div className="text-xs text-text-secondary font-mono">
+                Planned: {rescheduleTask.startTime} – {rescheduleTask.endTime}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs text-text-secondary font-medium">
+                Actual Minutes Completed
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="300"
+                step="15"
+                value={actualMinutesWorked}
+                onChange={(e) => handleActualMinutesChange(Number(e.target.value))}
+                className="w-full bg-surface border border-border-main rounded-md px-3 py-2 text-sm text-text-main focus:outline-none focus:border-red-main"
+              />
+            </div>
+
+            {rescheduleSuggestion ? (
+              <div className="p-3 bg-red-main/10 border border-red-main/20 rounded-lg space-y-2">
+                <div className="text-xs font-medium text-red-main flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" /> Smart Proposal
+                </div>
+                <p className="text-xs text-text-main leading-relaxed">
+                  {rescheduleSuggestion.reason}
+                </p>
+                <div className="text-xs font-mono text-text-secondary">
+                  Target Date: <strong className="text-text-main">{rescheduleSuggestion.targetDate}</strong> | New Slot: <strong className="text-text-main">{rescheduleSuggestion.suggestedStartTime} – {rescheduleSuggestion.suggestedEndTime}</strong>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 bg-surface hairline-border rounded-lg text-xs text-text-secondary">
+                You completed the full scheduled duration! Task will be marked fully done without rescheduling.
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="secondary" onClick={() => setRescheduleTask(null)}>
+                Cancel
+              </Button>
+              <Button type="button" variant="primary" onClick={handleApplyReschedule}>
+                Apply & Reschedule
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
+
 

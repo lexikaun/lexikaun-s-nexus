@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Modal } from '../ui/Modal';
@@ -10,7 +10,9 @@ import {
   Trash2,
   Edit2,
   Check,
-  Calendar as CalendarIcon,
+  RotateCw,
+  FastForward,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../context/useAuth';
 import {
@@ -20,7 +22,9 @@ import {
   updateTask,
   deleteTask,
 } from '../../services/db';
-import { Task, Goal, Priority, SpaceType } from '../../types';
+import { expandRecurringTask } from '../../utils/recurrence';
+import { generateSmartRescheduleSuggestion } from '../../utils/smartReschedule';
+import { Task, Goal, Priority, SpaceType, RecurrenceType, SmartRescheduleSuggestion } from '../../types';
 
 interface TimeBlockPlannerProps {
   space: SpaceType;
@@ -34,7 +38,7 @@ export const TimeBlockPlanner: React.FC<TimeBlockPlannerProps> = ({ space, title
   const { user } = useAuth();
   const userId = user?.uid || 'local-producer-01';
 
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [rawTasks, setRawTasks] = useState<Task[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
   const [selectedDate, setSelectedDate] = useState<string>(
@@ -50,11 +54,17 @@ export const TimeBlockPlanner: React.FC<TimeBlockPlannerProps> = ({ space, title
   const [formEndTime, setFormEndTime] = useState('10:00');
   const [formPriority, setFormPriority] = useState<Priority>('medium');
   const [formGoalId, setFormGoalId] = useState<string>('');
+  const [formRecurrence, setFormRecurrence] = useState<RecurrenceType>('none');
+
+  // Smart Reschedule State
+  const [rescheduleTask, setRescheduleTask] = useState<Task | null>(null);
+  const [actualMinutesWorked, setActualMinutesWorked] = useState<number>(30);
+  const [rescheduleSuggestion, setRescheduleSuggestion] = useState<SmartRescheduleSuggestion | null>(null);
 
   useEffect(() => {
     const unsubTasks = subscribeToTasks(userId, (loadedTasks) => {
       const filtered = loadedTasks.filter((t) => !t.space || t.space === space);
-      setTasks(filtered);
+      setRawTasks(filtered);
     });
 
     const unsubGoals = subscribeToGoals(userId, (loadedGoals) => {
@@ -92,6 +102,25 @@ export const TimeBlockPlanner: React.FC<TimeBlockPlannerProps> = ({ space, title
     });
   };
 
+  const weekDays = getWeekDays();
+
+  // Automatically expand recurring tasks for the active calendar viewport
+  const activeTasks = useMemo(() => {
+    const startRange = viewMode === 'day' ? selectedDate : weekDays[0].dateStr;
+    const endRange = viewMode === 'day' ? selectedDate : weekDays[6].dateStr;
+
+    const expandedList: Task[] = [];
+    for (const t of rawTasks) {
+      if (t.recurrence && t.recurrence !== 'none') {
+        const occurrences = expandRecurringTask(t, startRange, endRange);
+        expandedList.push(...occurrences);
+      } else {
+        expandedList.push(t);
+      }
+    }
+    return expandedList;
+  }, [rawTasks, viewMode, selectedDate, weekDays]);
+
   const handleOpenCreateForSlot = (timeString: string, dateStr?: string) => {
     setEditingTask(null);
     setFormTitle('');
@@ -104,6 +133,7 @@ export const TimeBlockPlanner: React.FC<TimeBlockPlannerProps> = ({ space, title
 
     setFormPriority('medium');
     setFormGoalId('');
+    setFormRecurrence('none');
     setIsModalOpen(true);
   };
 
@@ -115,6 +145,7 @@ export const TimeBlockPlanner: React.FC<TimeBlockPlannerProps> = ({ space, title
     setFormEndTime(task.endTime || '10:00');
     setFormPriority(task.priority || 'medium');
     setFormGoalId(task.goalId || '');
+    setFormRecurrence((typeof task.recurrence === 'string' ? task.recurrence : task.recurrence?.freq) || 'none');
     setIsModalOpen(true);
   };
 
@@ -130,6 +161,7 @@ export const TimeBlockPlanner: React.FC<TimeBlockPlannerProps> = ({ space, title
         endTime: formEndTime,
         priority: formPriority,
         goalId: formGoalId || undefined,
+        recurrence: formRecurrence === 'none' ? undefined : formRecurrence,
       });
       setEditingTask(null);
     } else {
@@ -144,6 +176,7 @@ export const TimeBlockPlanner: React.FC<TimeBlockPlannerProps> = ({ space, title
         priority: formPriority,
         status: 'planned',
         goalId: formGoalId || undefined,
+        recurrence: formRecurrence === 'none' ? undefined : formRecurrence,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
@@ -165,8 +198,55 @@ export const TimeBlockPlanner: React.FC<TimeBlockPlannerProps> = ({ space, title
     });
   };
 
-  const dayTasks = tasks.filter((t) => t.date === selectedDate);
-  const weekDays = getWeekDays();
+  // Open Smart Reschedule Modal
+  const handleOpenReschedule = (task: Task) => {
+    setRescheduleTask(task);
+    setActualMinutesWorked(30);
+    const suggestion = generateSmartRescheduleSuggestion(task, 30);
+    setRescheduleSuggestion(suggestion);
+  };
+
+  const handleActualMinutesChange = (mins: number) => {
+    setActualMinutesWorked(mins);
+    if (rescheduleTask) {
+      const suggestion = generateSmartRescheduleSuggestion(rescheduleTask, mins);
+      setRescheduleSuggestion(suggestion);
+    }
+  };
+
+  const handleApplyReschedule = async () => {
+    if (!rescheduleTask || !rescheduleSuggestion) return;
+
+    // 1. Update original task with partial completion
+    await updateTask(userId, rescheduleTask.id, {
+      status: 'completed',
+      actualDurationMinutes: actualMinutesWorked,
+      completedAt: Date.now(),
+      notes: `Partial session completed: ${actualMinutesWorked}m. Remaining ${rescheduleSuggestion.unfinishedMinutes}m rescheduled.`,
+    });
+
+    // 2. Create the follow-up task for the remaining duration
+    const followUpTask: Task = {
+      id: 'task_' + Date.now(),
+      userId,
+      space,
+      title: `${rescheduleTask.title} (Remaining Part)`,
+      date: rescheduleSuggestion.targetDate,
+      startTime: rescheduleSuggestion.suggestedStartTime,
+      endTime: rescheduleSuggestion.suggestedEndTime,
+      priority: rescheduleTask.priority,
+      status: 'planned',
+      goalId: rescheduleTask.goalId,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    await createTask(userId, followUpTask);
+
+    setRescheduleTask(null);
+    setRescheduleSuggestion(null);
+  };
+
+  const dayTasks = activeTasks.filter((t) => t.date === selectedDate);
 
   return (
     <div className="space-y-6">
@@ -240,9 +320,7 @@ export const TimeBlockPlanner: React.FC<TimeBlockPlannerProps> = ({ space, title
         <div className="hairline-border rounded-lg bg-bg-main divide-y divide-border-main">
           {HOURS.map((hour) => {
             const timeString = `${String(hour).padStart(2, '0')}:00`;
-            const nextTimeString = `${String(hour + 1).padStart(2, '0')}:00`;
 
-            // Tasks that fall into this hour slot
             const slotTasks = dayTasks.filter((t) => {
               const startH = parseInt(t.startTime.split(':')[0], 10);
               return startH === hour;
@@ -264,6 +342,7 @@ export const TimeBlockPlanner: React.FC<TimeBlockPlannerProps> = ({ space, title
                     slotTasks.map((task) => {
                       const isDone = task.status === 'completed';
                       const goal = goals.find((g) => g.id === task.goalId);
+                      const isRecurring = !!task.recurrence && task.recurrence !== 'none';
                       return (
                         <div
                           key={task.id}
@@ -282,12 +361,15 @@ export const TimeBlockPlanner: React.FC<TimeBlockPlannerProps> = ({ space, title
                             >
                               {isDone && <Check className="w-3 h-3" />}
                             </button>
-                            <div className="truncate">
+                            <div className="truncate flex items-center gap-1.5">
                               <span className={`font-normal ${isDone ? 'line-through text-text-secondary' : 'text-text-main'}`}>
                                 {task.title}
                               </span>
+                              {isRecurring && (
+                                <RotateCw className="w-3 h-3 text-text-secondary shrink-0" title="Recurring Routine" />
+                              )}
                               {goal && (
-                                <span className="text-[11px] text-text-secondary ml-2">
+                                <span className="text-[11px] text-text-secondary ml-1 truncate">
                                   • {goal.title}
                                 </span>
                               )}
@@ -299,6 +381,15 @@ export const TimeBlockPlanner: React.FC<TimeBlockPlannerProps> = ({ space, title
                               {task.startTime} – {task.endTime}
                             </span>
                             <div className="flex items-center gap-1 opacity-0 group-hover/task:opacity-100 transition-opacity pl-2">
+                              {!isDone && (
+                                <button
+                                  onClick={() => handleOpenReschedule(task)}
+                                  className="p-1 hover:text-red-main text-text-secondary cursor-pointer"
+                                  title="Partial completion / Smart reschedule"
+                                >
+                                  <Sparkles className="w-3 h-3" />
+                                </button>
+                              )}
                               <button
                                 onClick={() => handleOpenEdit(task)}
                                 className="p-1 hover:text-text-main text-text-secondary cursor-pointer"
@@ -340,7 +431,7 @@ export const TimeBlockPlanner: React.FC<TimeBlockPlannerProps> = ({ space, title
             {weekDays.map(({ dateStr, dayName, dayNum }) => {
               const isToday = dateStr === new Date().toISOString().split('T')[0];
               const isSelected = dateStr === selectedDate;
-              const scheduledTasks = tasks.filter((t) => t.date === dateStr);
+              const scheduledTasks = activeTasks.filter((t) => t.date === dateStr);
 
               return (
                 <div key={dateStr} className="flex flex-col min-h-[480px]">
@@ -367,6 +458,7 @@ export const TimeBlockPlanner: React.FC<TimeBlockPlannerProps> = ({ space, title
                   <div className="flex-1 p-2 space-y-2">
                     {scheduledTasks.map((task) => {
                       const isDone = task.status === 'completed';
+                      const isRecurring = !!task.recurrence && task.recurrence !== 'none';
                       return (
                         <div
                           key={task.id}
@@ -375,8 +467,11 @@ export const TimeBlockPlanner: React.FC<TimeBlockPlannerProps> = ({ space, title
                             isDone ? 'border-l-border-main opacity-60' : 'border-l-red-main'
                           } text-xs text-text-main cursor-pointer hover:bg-surface/80 transition-colors space-y-1`}
                         >
-                          <div className="font-mono text-[10px] text-text-secondary flex items-center gap-1">
-                            <Clock className="w-2.5 h-2.5" /> {task.startTime} – {task.endTime}
+                          <div className="font-mono text-[10px] text-text-secondary flex items-center justify-between">
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-2.5 h-2.5" /> {task.startTime}
+                            </span>
+                            {isRecurring && <RotateCw className="w-2.5 h-2.5 text-text-secondary" />}
                           </div>
                           <div className={`font-normal leading-tight ${isDone ? 'line-through text-text-secondary' : 'text-text-main'}`}>
                             {task.title}
@@ -415,13 +510,28 @@ export const TimeBlockPlanner: React.FC<TimeBlockPlannerProps> = ({ space, title
             autoFocus
           />
 
-          <Input
-            label="Scheduled Date"
-            type="date"
-            value={formDate}
-            onChange={(e) => setFormDate(e.target.value)}
-            required
-          />
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Scheduled Date"
+              type="date"
+              value={formDate}
+              onChange={(e) => setFormDate(e.target.value)}
+              required
+            />
+            <div className="space-y-1.5">
+              <label className="text-xs text-text-secondary font-medium">Recurrence</label>
+              <select
+                value={formRecurrence}
+                onChange={(e) => setFormRecurrence(e.target.value as RecurrenceType)}
+                className="w-full bg-surface border border-border-main rounded-md px-3 py-2 text-sm text-text-main focus:outline-none focus:border-red-main"
+              >
+                <option value="none">One-time (No Recurrence)</option>
+                <option value="daily">Daily</option>
+                <option value="weekdays">Weekdays (Mon-Fri)</option>
+                <option value="weekly">Weekly (Every 7 days)</option>
+              </select>
+            </div>
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <Input
@@ -482,6 +592,68 @@ export const TimeBlockPlanner: React.FC<TimeBlockPlannerProps> = ({ space, title
           </div>
         </form>
       </Modal>
+
+      {/* Smart Reschedule Modal */}
+      <Modal
+        isOpen={!!rescheduleTask}
+        onClose={() => setRescheduleTask(null)}
+        title="Smart Partial Rescheduling"
+      >
+        {rescheduleTask && (
+          <div className="space-y-4">
+            <div className="p-3 bg-surface hairline-border rounded-lg space-y-1">
+              <div className="text-xs text-text-secondary">Selected Task</div>
+              <div className="text-sm font-medium text-text-main">{rescheduleTask.title}</div>
+              <div className="text-xs text-text-secondary font-mono">
+                Planned: {rescheduleTask.startTime} – {rescheduleTask.endTime}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs text-text-secondary font-medium">
+                Actual Minutes Completed
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="300"
+                step="15"
+                value={actualMinutesWorked}
+                onChange={(e) => handleActualMinutesChange(Number(e.target.value))}
+                className="w-full bg-surface border border-border-main rounded-md px-3 py-2 text-sm text-text-main focus:outline-none focus:border-red-main"
+              />
+            </div>
+
+            {rescheduleSuggestion ? (
+              <div className="p-3 bg-red-main/10 border border-red-main/20 rounded-lg space-y-2">
+                <div className="text-xs font-medium text-red-main flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" /> Smart Proposal
+                </div>
+                <p className="text-xs text-text-main leading-relaxed">
+                  {rescheduleSuggestion.reason}
+                </p>
+                <div className="text-xs font-mono text-text-secondary">
+                  Target Date: <strong className="text-text-main">{rescheduleSuggestion.targetDate}</strong> | New Slot: <strong className="text-text-main">{rescheduleSuggestion.suggestedStartTime} – {rescheduleSuggestion.suggestedEndTime}</strong>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 bg-surface hairline-border rounded-lg text-xs text-text-secondary">
+                You completed the full scheduled duration! Task will be marked fully done without rescheduling.
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="secondary" onClick={() => setRescheduleTask(null)}>
+                Cancel
+              </Button>
+              <Button type="button" variant="primary" onClick={handleApplyReschedule}>
+                Apply & Reschedule
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
+
