@@ -1,44 +1,72 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg-main: #0B0B0A;
-  --color-surface: #151412;
-  --color-text-main: #F2F0E9;
-  --color-text-secondary: #95928A;
-  --color-border-main: #242220;
-  --color-red-main: #E4423A;
-  --color-music-accent: #FF5A46;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-sans: 'Work Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+
+  --color-canvas: #1E1C22;
+  --color-surface: #27242C;
+  --color-surface-hover: #302D36;
+  --color-ink: #EDE8E0;
+  --color-ink-muted: #948D9C;
+  --color-accent: #D98E4A;
+  --color-hairline: rgba(237, 232, 224, 0.08);
+
+  /* Semantic & backward-compatible aliases */
+  --color-bg-main: #1E1C22;
+  --color-text-main: #EDE8E0;
+  --color-text-secondary: #948D9C;
+  --color-border-main: rgba(237, 232, 224, 0.08);
+  --color-red-main: #D98E4A;
+  --color-music-accent: #D98E4A;
 }
 
 @layer base {
   :root {
-    --bg-main: #0B0B0A;
-    --surface: #151412;
-    --text-main: #F2F0E9;
-    --text-secondary: #95928A;
-    --border-main: #242220;
-    --red-main: #E4423A;
-    --music-accent: #FF5A46;
+    --canvas: #1E1C22;
+    --surface: #27242C;
+    --surface-hover: #302D36;
+    --ink: #EDE8E0;
+    --ink-muted: #948D9C;
+    --accent: #D98E4A;
+    --hairline: rgba(237, 232, 224, 0.08);
+
+    --bg-main: var(--canvas);
+    --text-main: var(--ink);
+    --text-secondary: var(--ink-muted);
+    --border-main: var(--hairline);
+    --red-main: var(--accent);
+    --music-accent: var(--accent);
+
+    --radius-card: 16px;
+    --radius-btn: 9px;
+    --radius-chip: 6px;
+
+    --shadow-floating: 0 12px 32px rgba(0, 0, 0, 0.35);
+    --shadow-panel: 0 16px 48px rgba(0, 0, 0, 0.45);
+    --shadow-subtle: 0 4px 12px rgba(0, 0, 0, 0.25);
   }
 
   body {
-    background-color: var(--bg-main);
-    color: var(--text-main);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--canvas);
+    color: var(--ink);
+    font-family: 'Work Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    font-weight: 400; /* Cap weight at 400/500 */
+    font-weight: 400;
   }
 
-  /* Cap heading weights and other bold elements */
-  h1, h2, h3, h4, h5, h6, b, strong {
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Fraunces', Georgia, serif;
     font-weight: 500;
+    letter-spacing: -0.01em;
   }
 
   /* Custom Sleek Scrollbar */
   ::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
+    width: 5px;
+    height: 5px;
   }
 
   ::-webkit-scrollbar-track {
@@ -46,15 +74,91 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: var(--border-main);
+    background: rgba(237, 232, 224, 0.12);
     border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--text-secondary);
+    background: rgba(237, 232, 224, 0.25);
   }
 }
 
+/* ==========================================================================
+   Tactile Floating Notecard Utilities & Elevation Grammar
+   ========================================================================== */
+
+/* 1. Floating Card Foundation */
+.floating-card,
+.card {
+  background-color: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  transition: transform 150ms ease-out, background-color 150ms ease-out, border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.card-hover:hover,
+.floating-card:hover {
+  transform: translateY(-1px);
+  background-color: var(--surface-hover);
+  border-color: rgba(237, 232, 224, 0.14);
+}
+
+/* 2. Floating Panel Foundation */
+.floating-panel {
+  background-color: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 16px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+}
+
+/* 3. Button & Tag Primitives */
+.pill-btn {
+  border-radius: 9px;
+  font-family: 'Work Sans', sans-serif;
+  transition: all 150ms ease-out;
+}
+
+.tag-chip {
+  border-radius: 6px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+/* 4. Progressive Disclosure Reveal Utility */
+.reveal {
+  transition: max-height 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 220ms cubic-bezier(0.4, 0, 0.2, 1), transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 5. Hairline utility */
 .hairline-border {
-  border: 0.5px solid var(--border-main);
+  border: 1px solid var(--hairline);
+}
+
+/* 6. Typography Helper Classes */
+.font-display {
+  font-family: 'Fraunces', Georgia, serif;
+}
+
+.font-body,
+.font-sans {
+  font-family: 'Work Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.font-mono {
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
+/* 7. Accessibility: prefers-reduced-motion fallback */
+@media (prefers-reduced-motion: reduce) {
+  .floating-card,
+  .card,
+  .card-hover,
+  .reveal,
+  .pill-btn,
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transform: none !important;
+  }
 }
