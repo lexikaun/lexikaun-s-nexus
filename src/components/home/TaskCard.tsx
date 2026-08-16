@@ -63,7 +63,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   const isDone = task.status === 'completed';
   const hasTime = Boolean(task.startTime && task.startTime.trim() !== '');
   const duration = calculateMinutes(task.startTime, task.endTime, task.duration || task.durationMinutes);
-  
+
   const linkedGoal = task.goalId ? goals.find((g) => g.id === task.goalId) : undefined;
   const linkedChannel = task.channelId ? channels.find((c) => c.id === task.channelId) : undefined;
 
@@ -77,80 +77,114 @@ export const TaskCard: React.FC<TaskCardProps> = ({
       : formatTime12h(task.startTime)
     : null;
 
+  const hasSecondaryDetails = Boolean(
+    linkedChannel ||
+      totalSubtasks > 0 ||
+      hasNotes ||
+      linkedGoal ||
+      (task.recurrence && task.recurrence !== 'none') ||
+      task.associatedBeatId
+  );
+
   return (
     <div
       onClick={() => onClick(task)}
-      className={`group relative p-3 rounded-xl bg-surface/90 border border-border-main/50 hover:border-border-main hover:shadow-md transition-all cursor-pointer space-y-2 select-none ${
-        isDone ? 'opacity-50 bg-surface/40' : ''
+      tabIndex={0}
+      role="button"
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick(task);
+        }
+      }}
+      className={`group relative p-3.5 rounded-2xl bg-[#27242C] border border-[rgba(237,232,224,0.08)] shadow-[0_12px_32px_rgba(0,0,0,0.35)] transition-all duration-150 ease-out cursor-pointer select-none space-y-2.5 outline-none hover:-translate-y-[1px] hover:bg-[#302D36] hover:border-[rgba(237,232,224,0.16)] hover:shadow-[0_16px_36px_rgba(0,0,0,0.45)] focus-visible:ring-2 focus-visible:ring-[#D98E4A]/50 ${
+        isDone ? 'opacity-40 bg-[#27242C]/60 hover:opacity-75' : ''
       }`}
     >
-      {/* 1. Top Row: Scheduled time on left, duration pill on right */}
+      {/* 1. Top Row: Scheduled time on left, duration pill on right (IBM Plex Mono) */}
       {(formattedTimeRange || duration > 0) && (
-        <div className="flex items-center justify-between text-[11px] font-mono text-text-secondary">
+        <div className="flex items-center justify-between font-mono text-[11px] text-[#948D9C]">
           {formattedTimeRange ? (
-            <span className="text-text-secondary/90 font-medium">{formattedTimeRange}</span>
+            <span className="font-medium text-[#EDE8E0]/90 tracking-tight">
+              {formattedTimeRange}
+            </span>
           ) : (
             <span />
           )}
           {duration > 0 && (
-            <span className="px-1.5 py-0.5 rounded bg-surface border border-border-main/50 text-[10px] text-text-secondary font-mono">
+            <span className="px-2 py-0.5 rounded-md bg-[#1E1C22]/80 border border-[rgba(237,232,224,0.08)] text-[10px] text-[#948D9C] font-mono tracking-tight">
               {formatDuration(duration)}
             </span>
           )}
         </div>
       )}
 
-      {/* 2. Middle Row: Task title */}
-      <div className="text-xs font-normal text-text-main leading-snug">
-        <span className={isDone ? 'line-through text-text-secondary' : ''}>
-          {task.title}
-        </span>
-      </div>
+      {/* 2. Middle Row: Checkbox + Task Title in Fraunces */}
+      <div className="flex items-start gap-3">
+        {/* Checkbox button */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleComplete(task);
+          }}
+          title={isDone ? 'Mark as planned' : 'Mark as completed'}
+          className={`w-4 h-4 mt-0.5 rounded-full flex items-center justify-center transition-all duration-150 cursor-pointer shrink-0 ${
+            isDone
+              ? 'bg-[#D98E4A] text-[#1E1C22] shadow-[0_0_8px_rgba(217,142,74,0.4)]'
+              : 'border border-[rgba(237,232,224,0.3)] hover:border-[#D98E4A] bg-[#1E1C22]/70 hover:scale-105'
+          }`}
+        >
+          {isDone && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+        </button>
 
-      {/* 3. Bottom Row: Checkbox on left, metadata chips (channel, subtasks, notes, goal), hover actions */}
-      <div className="flex items-center justify-between pt-0.5 gap-2 flex-wrap">
-        {/* Left: Checkbox & Metadata badges */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Checkbox button */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleComplete(task);
-            }}
-            title={isDone ? 'Mark as planned' : 'Mark as completed'}
-            className={`w-4 h-4 rounded-full flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+        {/* Task Title (Fraunces serif) */}
+        <div className="flex-1 min-w-0">
+          <h4
+            className={`font-display text-sm font-normal leading-snug tracking-tight transition-all duration-150 ${
               isDone
-                ? 'bg-red-main text-white'
-                : 'border border-border-main/80 hover:border-red-main bg-bg-main'
+                ? 'line-through text-[#948D9C]'
+                : 'text-[#EDE8E0] group-hover:text-white'
             }`}
           >
-            {isDone && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-          </button>
+            {task.title}
+          </h4>
+        </div>
+      </div>
 
+      {/* 3. Bottom Row: Progressive Disclosure on Hover (Secondary metadata & actions) */}
+      <div className="flex items-center justify-between pt-0.5 min-h-[22px]">
+        {/* Left: Secondary metadata chips (reveal on hover/focus) */}
+        <div
+          className={`flex items-center gap-1.5 flex-wrap transition-opacity duration-150 ease-out ${
+            hasSecondaryDetails
+              ? 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'
+              : 'opacity-0'
+          }`}
+        >
           {/* Channel Tag chip */}
           {linkedChannel && (
             <span
-              className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded-md border"
+              className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded-[6px] border"
               style={{
-                backgroundColor: `${linkedChannel.color}15`,
-                borderColor: `${linkedChannel.color}40`,
+                backgroundColor: `${linkedChannel.color}18`,
+                borderColor: `${linkedChannel.color}45`,
                 color: linkedChannel.color,
               }}
               title={`Channel: #${linkedChannel.name}`}
             >
               <Hash className="w-2.5 h-2.5 shrink-0" />
-              <span className="truncate max-w-[90px]">{linkedChannel.name}</span>
+              <span className="truncate max-w-[85px]">{linkedChannel.name}</span>
             </span>
           )}
 
           {/* Subtask count pill */}
           {totalSubtasks > 0 && (
             <span
-              className="inline-flex items-center gap-1 text-[10px] font-mono text-text-secondary bg-surface hairline-border px-1.5 py-0.5 rounded"
+              className="inline-flex items-center gap-1 text-[10px] font-mono text-[#948D9C] bg-[#1E1C22]/80 border border-[rgba(237,232,224,0.08)] px-1.5 py-0.5 rounded-[6px]"
               title={`${completedSubtasks} of ${totalSubtasks} subtasks completed`}
             >
-              <CheckSquare className="w-2.5 h-2.5 text-text-secondary" />
+              <CheckSquare className="w-2.5 h-2.5 text-[#948D9C]" />
               <span>
                 {completedSubtasks}/{totalSubtasks}
               </span>
@@ -161,9 +195,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           {hasNotes && (
             <span
               title={task.notes || `${task.notesCount || 1} notes`}
-              className="inline-flex items-center gap-0.5 text-[10px] font-mono text-text-secondary hover:text-text-main"
+              className="inline-flex items-center gap-0.5 text-[10px] font-mono text-[#948D9C] hover:text-[#EDE8E0] transition-colors"
             >
-              <MessageSquare className="w-2.5 h-2.5 text-text-secondary" />
+              <MessageSquare className="w-2.5 h-2.5 text-[#948D9C]" />
               {task.notesCount && task.notesCount > 1 ? (
                 <span>{task.notesCount}</span>
               ) : null}
@@ -173,31 +207,31 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           {/* Linked Goal Pill */}
           {linkedGoal && (
             <span
-              className="inline-flex items-center gap-1 text-[10px] text-text-secondary bg-surface hairline-border px-1.5 py-0.5 rounded-full"
+              className="inline-flex items-center gap-1 text-[10px] font-mono text-[#948D9C] bg-[#1E1C22]/80 border border-[rgba(237,232,224,0.08)] px-1.5 py-0.5 rounded-full"
               title={`Goal: ${linkedGoal.title}`}
             >
-              <Target className="w-2.5 h-2.5 text-red-main shrink-0" />
-              <span className="truncate max-w-[80px]">{linkedGoal.title}</span>
+              <Target className="w-2.5 h-2.5 text-[#D98E4A] shrink-0" />
+              <span className="truncate max-w-[75px]">{linkedGoal.title}</span>
             </span>
           )}
 
           {/* Recurring indicator */}
           {task.recurrence && task.recurrence !== 'none' && (
-            <span title="Recurring task" className="text-text-secondary/60">
+            <span title="Recurring task" className="text-[#948D9C]">
               <RotateCw className="w-2.5 h-2.5" />
             </span>
           )}
 
-          {/* Music Beat Indicator */}
+          {/* Attached Beat indicator */}
           {task.associatedBeatId && (
-            <span title="Beat Attached" className="text-music-accent">
+            <span title="Beat Attached" className="text-[#D98E4A]">
               <Music className="w-2.5 h-2.5" />
             </span>
           )}
         </div>
 
-        {/* Right: Hover Quick Actions */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-auto">
+        {/* Right: Hover Action Controls */}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150 ease-out ml-auto">
           {onQuickRescheduleTomorrow && (
             <button
               type="button"
@@ -205,7 +239,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                 e.stopPropagation();
                 onQuickRescheduleTomorrow(task);
               }}
-              className="p-0.5 rounded hover:bg-surface text-text-secondary hover:text-text-main transition-colors cursor-pointer"
+              className="p-1 rounded-md hover:bg-[#1E1C22] text-[#948D9C] hover:text-[#EDE8E0] transition-colors cursor-pointer"
               title="Move to tomorrow"
             >
               <ArrowRight className="w-3 h-3" />
@@ -219,7 +253,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                 e.stopPropagation();
                 onDelete(task.id);
               }}
-              className="p-0.5 rounded hover:bg-surface text-text-secondary hover:text-red-main transition-colors cursor-pointer"
+              className="p-1 rounded-md hover:bg-[#1E1C22] text-[#948D9C] hover:text-red-400 transition-colors cursor-pointer"
               title="Delete task"
             >
               <Trash2 className="w-3 h-3" />
