@@ -5,10 +5,10 @@ export const Search: React.FC = () => {
   const [query, setQuery] = useState('');
 
   const mockResults = [
-    { type: 'Professional Task', space: 'professional', title: 'Vocal Layering & Comping for EP Track 2', meta: 'Today 10:30 AM' },
-    { type: 'Music Beat', space: 'music', title: 'Nightfall Drift', meta: '140 BPM | D# Min' },
-    { type: 'Personal Habit', space: 'personal', title: 'Morning Meditation (15 min)', meta: '5-day streak' },
-    { type: 'Professional Goal', space: 'professional', title: 'Release 5-Track Debut EP', meta: '60% completed' },
+    { type: 'Task', title: 'Vocal Layering & Comping for EP Track 2', meta: 'Today 10:30 AM' },
+    { type: 'Music Beat', title: 'Nightfall Drift', meta: '140 BPM | D# Min' },
+    { type: 'Habit', title: 'Morning Meditation (15 min)', meta: '5-day streak' },
+    { type: 'Goal', title: 'Release 5-Track Debut EP', meta: '60% completed' },
   ];
 
   const filtered = query
@@ -20,7 +20,7 @@ export const Search: React.FC = () => {
       <div>
         <h1 className="text-xl font-medium tracking-tight text-text-main">Search</h1>
         <p className="text-xs text-text-secondary mt-1">
-          Instant cross-space index across Tasks, Beats, Goals, and Habits.
+          Search across Tasks, Beats, Goals, and Habits.
         </p>
       </div>
 
@@ -31,7 +31,7 @@ export const Search: React.FC = () => {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by title, BPM, goal, or space..."
+          placeholder="Search by title, BPM, goal, or tags..."
           className="w-full bg-surface hairline-border rounded-lg pl-10 pr-4 py-2.5 text-sm text-text-main placeholder:text-text-secondary focus:outline-none focus:border-text-secondary transition-colors"
           autoFocus
         />
@@ -51,9 +51,9 @@ export const Search: React.FC = () => {
             >
               <div className="flex items-center gap-3">
                 <div className="p-1.5 rounded bg-surface hairline-border text-text-secondary shrink-0">
-                  {item.space === 'music' ? (
+                  {item.type.includes('Music') || item.type.includes('Beat') ? (
                     <Music className="w-3.5 h-3.5 text-music-accent" />
-                  ) : item.space === 'professional' ? (
+                  ) : item.type.includes('Task') ? (
                     <Briefcase className="w-3.5 h-3.5 text-text-main" />
                   ) : (
                     <User className="w-3.5 h-3.5 text-text-main" />
