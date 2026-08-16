@@ -3,13 +3,10 @@ import {
   Plus,
   Clock,
   Inbox,
-  Check,
-  RotateCw,
-  Music,
-  Trash2,
 } from 'lucide-react';
 import { Task, Goal } from '../../types';
 import { QuickAddTask } from './QuickAddTask';
+import { TaskCard } from './TaskCard';
 
 export interface DayColumnProps {
   date: Date;
@@ -32,6 +29,7 @@ export interface DayColumnProps {
   onToggleComplete?: (task: Task) => void;
   onDeleteTask?: (taskId: string) => void;
   onSelectTask?: (task: Task) => void;
+  onQuickRescheduleTomorrow?: (task: Task) => void;
 }
 
 function calculateMinutes(startTime?: string, endTime?: string, duration?: number): number {
@@ -63,6 +61,7 @@ export const DayColumn: React.FC<DayColumnProps> = ({
   onToggleComplete,
   onDeleteTask,
   onSelectTask,
+  onQuickRescheduleTomorrow,
 }) => {
   const [isAddingInline, setIsAddingInline] = useState(false);
 
@@ -203,103 +202,20 @@ export const DayColumn: React.FC<DayColumnProps> = ({
             </div>
           ) : (
             <div className="space-y-1.5">
-              {scheduledTasks.map((task) => {
-                const isDone = task.status === 'completed';
-                const duration = calculateMinutes(
-                  task.startTime,
-                  task.endTime,
-                  task.duration || task.durationMinutes
-                );
-
-                return (
-                  <div
-                    key={task.id}
-                    onClick={() => onSelectTask?.(task)}
-                    className={`group relative p-2.5 rounded-lg bg-surface hairline-border hover:border-border-main/80 transition-all cursor-pointer space-y-1.5 ${
-                      isDone ? 'opacity-60 bg-surface/40' : ''
-                    }`}
-                  >
-                    {/* Top Row: Completion checkbox + Title */}
-                    <div className="flex items-start gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onToggleComplete?.(task);
-                        }}
-                        className={`w-4 h-4 mt-0.5 rounded flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-                          isDone
-                            ? 'bg-red-main text-white'
-                            : 'border border-border-main/80 hover:border-red-main bg-bg-main'
-                        }`}
-                      >
-                        {isDone && <Check className="w-3 h-3 stroke-[3]" />}
-                      </button>
-
-                      <span
-                        className={`text-xs font-medium leading-snug flex-1 truncate ${
-                          isDone
-                            ? 'line-through text-text-secondary'
-                            : 'text-text-main'
-                        }`}
-                      >
-                        {task.title}
-                      </span>
-
-                      {/* Delete action on hover */}
-                      {onDeleteTask && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteTask(task.id);
-                          }}
-                          className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:text-red-main text-text-secondary transition-all cursor-pointer"
-                          title="Delete task"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Bottom Row: Time badge, duration, tags */}
-                    <div className="flex items-center gap-1.5 text-[11px] font-mono text-text-secondary pl-6 flex-wrap">
-                      <span className="text-text-secondary/90">
-                        {task.startTime} – {task.endTime}
-                      </span>
-                      {duration > 0 && (
-                        <>
-                          <span className="text-border-main">•</span>
-                          <span>{formatDuration(duration)}</span>
-                        </>
-                      )}
-
-                      {task.recurrence && task.recurrence !== 'none' && (
-                        <span
-                          className="inline-flex items-center gap-0.5 text-[10px] text-text-secondary bg-surface px-1 py-0.2 rounded"
-                          title="Recurring task"
-                        >
-                          <RotateCw className="w-2.5 h-2.5 text-red-main" />
-                        </span>
-                      )}
-
-                      {task.associatedBeatId && (
-                        <span
-                          className="inline-flex items-center gap-0.5 text-[10px] text-music-accent bg-music-accent/10 px-1 py-0.2 rounded"
-                          title="Music beat task"
-                        >
-                          <Music className="w-2.5 h-2.5" />
-                        </span>
-                      )}
-
-                      {task.priority === 'critical' && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-main" title="Critical priority" />
-                      )}
-                      {task.priority === 'high' && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" title="High priority" />
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+              {scheduledTasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onClick={(t) => onSelectTask?.(t)}
+                  onToggleComplete={(t) => onToggleComplete?.(t)}
+                  onDelete={(id) => onDeleteTask?.(id)}
+                  onQuickRescheduleTomorrow={
+                    onQuickRescheduleTomorrow
+                      ? (t) => onQuickRescheduleTomorrow(t)
+                      : undefined
+                  }
+                />
+              ))}
             </div>
           )}
         </div>
@@ -325,66 +241,20 @@ export const DayColumn: React.FC<DayColumnProps> = ({
             </div>
           ) : (
             <div className="space-y-1.5">
-              {unscheduledTasks.map((task) => {
-                const isDone = task.status === 'completed';
-                return (
-                  <div
-                    key={task.id}
-                    onClick={() => onSelectTask?.(task)}
-                    className={`group relative p-2.5 rounded-lg bg-surface hairline-border hover:border-border-main/80 transition-all cursor-pointer space-y-1 ${
-                      isDone ? 'opacity-60 bg-surface/40' : ''
-                    }`}
-                  >
-                    <div className="flex items-start gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onToggleComplete?.(task);
-                        }}
-                        className={`w-4 h-4 mt-0.5 rounded flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-                          isDone
-                            ? 'bg-red-main text-white'
-                            : 'border border-border-main/80 hover:border-red-main bg-bg-main'
-                        }`}
-                      >
-                        {isDone && <Check className="w-3 h-3 stroke-[3]" />}
-                      </button>
-
-                      <span
-                        className={`text-xs font-medium leading-snug flex-1 truncate ${
-                          isDone
-                            ? 'line-through text-text-secondary'
-                            : 'text-text-main'
-                        }`}
-                      >
-                        {task.title}
-                      </span>
-
-                      {onDeleteTask && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteTask(task.id);
-                          }}
-                          className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:text-red-main text-text-secondary transition-all cursor-pointer"
-                          title="Delete task"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-1.5 text-[11px] font-mono text-text-secondary pl-6">
-                      <span className="text-text-secondary/60 text-[10px]">Unscheduled</span>
-                      {task.recurrence && task.recurrence !== 'none' && (
-                        <span className="inline-flex items-center gap-0.5 text-[10px] text-text-secondary bg-surface px-1 py-0.2 rounded">
-                          <RotateCw className="w-2.5 h-2.5 text-red-main" />
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+              {unscheduledTasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onClick={(t) => onSelectTask?.(t)}
+                  onToggleComplete={(t) => onToggleComplete?.(t)}
+                  onDelete={(id) => onDeleteTask?.(id)}
+                  onQuickRescheduleTomorrow={
+                    onQuickRescheduleTomorrow
+                      ? (t) => onQuickRescheduleTomorrow(t)
+                      : undefined
+                  }
+                />
+              ))}
             </div>
           )}
         </div>

@@ -9,6 +9,7 @@ import {
 import { Button } from '../components/ui/Button';
 import { DayColumn } from '../components/home/DayColumn';
 import { CalendarPanel } from '../components/home/CalendarPanel';
+import { TaskScheduleModal } from '../components/home/TaskScheduleModal';
 import { useAuth } from '../context/useAuth';
 import {
   subscribeToTasks,
@@ -43,6 +44,9 @@ export const Home: React.FC = () => {
 
   // Controls which day column has its quick-add open via top bar
   const [activeAddingDate, setActiveAddingDate] = useState<string | null>(null);
+
+  // Selected task for click-based detail/reschedule modal
+  const [selectedTaskForEdit, setSelectedTaskForEdit] = useState<Task | null>(null);
 
   // Number of visible day columns (3, 4, 5, or 7)
   const [visibleDaysCount, setVisibleDaysCount] = useState<number>(4);
@@ -169,6 +173,45 @@ export const Home: React.FC = () => {
     await createTask(userId, newTask);
   };
 
+  // Update existing task from Schedule/Detail modal
+  const handleSaveTaskModal = async (updatedTask: Task) => {
+    const realId = updatedTask.id.includes('_rec_')
+      ? updatedTask.id.split('_rec_')[0]
+      : updatedTask.id;
+
+    // Optimistic local update
+    setRawTasks((prev) =>
+      prev.map((t) => (t.id === realId ? { ...updatedTask, id: realId } : t))
+    );
+
+    await updateTask(userId, realId, {
+      title: updatedTask.title,
+      date: updatedTask.date,
+      startTime: updatedTask.startTime,
+      endTime: updatedTask.endTime,
+      priority: updatedTask.priority,
+      goalId: updatedTask.goalId || undefined,
+      notes: updatedTask.notes || undefined,
+    });
+  };
+
+  // Quick move task to tomorrow
+  const handleQuickRescheduleTomorrow = async (task: Task) => {
+    const realId = task.id.includes('_rec_') ? task.id.split('_rec_')[0] : task.id;
+    const baseDate = new Date(task.date || new Date().toISOString().split('T')[0]);
+    baseDate.setDate(baseDate.getDate() + 1);
+    const tomorrowStr = baseDate.toISOString().split('T')[0];
+
+    // Optimistic update
+    setRawTasks((prev) =>
+      prev.map((t) => (t.id === realId ? { ...t, date: tomorrowStr } : t))
+    );
+
+    await updateTask(userId, realId, {
+      date: tomorrowStr,
+    });
+  };
+
   // Toggle task completion
   const handleToggleComplete = async (task: Task) => {
     const realId = task.id.includes('_rec_') ? task.id.split('_rec_')[0] : task.id;
@@ -198,7 +241,9 @@ export const Home: React.FC = () => {
   // Trigger quick add from top bar
   const handleTopBarAddTask = () => {
     const todayStr = new Date().toISOString().split('T')[0];
-    const isTodayVisible = visibleDates.some((d) => d.toISOString().split('T')[0] === todayStr);
+    const isTodayVisible = visibleDates.some(
+      (d) => d.toISOString().split('T')[0] === todayStr
+    );
     setActiveAddingDate(isTodayVisible ? todayStr : startIsoStr);
   };
 
@@ -335,8 +380,10 @@ export const Home: React.FC = () => {
                 onToggleComplete={handleToggleComplete}
                 onDeleteTask={handleDeleteTask}
                 onSelectTask={(task) => {
+                  setSelectedTaskForEdit(task);
                   setSelectedCalendarDate(date);
                 }}
+                onQuickRescheduleTomorrow={handleQuickRescheduleTomorrow}
               />
             );
           })}
@@ -353,6 +400,17 @@ export const Home: React.FC = () => {
           tasksForDate={tasksForSelectedDate}
         />
       </div>
+
+      {/* Click-based Task Detail & Reschedule Modal */}
+      {selectedTaskForEdit && (
+        <TaskScheduleModal
+          task={selectedTaskForEdit}
+          goals={goals}
+          onClose={() => setSelectedTaskForEdit(null)}
+          onSave={handleSaveTaskModal}
+          onDelete={handleDeleteTask}
+        />
+      )}
     </div>
   );
 };
