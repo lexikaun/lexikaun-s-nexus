@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
-import { Task, Goal } from '../../types';
+import { Task, Goal, Channel } from '../../types';
 import { QuickAddTask } from './QuickAddTask';
 import { TaskCard } from './TaskCard';
 
@@ -9,6 +9,7 @@ export interface DayColumnProps {
   isToday: boolean;
   tasks: Task[];
   goals?: Goal[];
+  channels?: Channel[];
   isAddingExternal?: boolean;
   onCloseAddingExternal?: () => void;
   onAddTask?: (dateStr: string) => void;
@@ -20,6 +21,7 @@ export interface DayColumnProps {
     durationMinutes?: number;
     priority?: any;
     goalId?: string;
+    channelId?: string;
     notes?: string;
   }) => Promise<void> | void;
   onToggleComplete?: (task: Task) => void;
@@ -27,6 +29,7 @@ export interface DayColumnProps {
   onSelectTask?: (task: Task) => void;
   onQuickRescheduleTomorrow?: (task: Task) => void;
   onCreateGoal?: (title: string) => Promise<string>;
+  onCreateChannel?: (name: string, color?: string) => Promise<string>;
 }
 
 export const DayColumn: React.FC<DayColumnProps> = ({
@@ -34,6 +37,7 @@ export const DayColumn: React.FC<DayColumnProps> = ({
   isToday,
   tasks,
   goals = [],
+  channels = [],
   isAddingExternal = false,
   onCloseAddingExternal,
   onAddTask,
@@ -43,6 +47,7 @@ export const DayColumn: React.FC<DayColumnProps> = ({
   onSelectTask,
   onQuickRescheduleTomorrow,
   onCreateGoal,
+  onCreateChannel,
 }) => {
   const [isAddingInline, setIsAddingInline] = useState(false);
 
@@ -127,7 +132,9 @@ export const DayColumn: React.FC<DayColumnProps> = ({
             <QuickAddTask
               dateStr={dateStr}
               goals={goals}
+              channels={channels}
               onCreateGoal={onCreateGoal}
+              onCreateChannel={onCreateChannel}
               onSave={handleSave}
               onCancel={handleCloseAdd}
             />
@@ -148,6 +155,7 @@ export const DayColumn: React.FC<DayColumnProps> = ({
             key={task.id}
             task={task}
             goals={goals}
+            channels={channels}
             onClick={(t) => onSelectTask?.(t)}
             onToggleComplete={(t) => onToggleComplete?.(t)}
             onDelete={(id) => onDeleteTask?.(id)}

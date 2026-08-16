@@ -6,13 +6,16 @@ import {
   Trash2,
   ArrowRight,
   Target,
-  FileText,
+  MessageSquare,
+  CheckSquare,
+  Hash,
 } from 'lucide-react';
-import { Task, Goal } from '../../types';
+import { Task, Goal, Channel } from '../../types';
 
 export interface TaskCardProps {
   task: Task;
   goals?: Goal[];
+  channels?: Channel[];
   onToggleComplete: (task: Task) => void;
   onClick: (task: Task) => void;
   onDelete?: (taskId: string) => void;
@@ -51,6 +54,7 @@ function formatTime12h(timeStr?: string): string {
 export const TaskCard: React.FC<TaskCardProps> = ({
   task,
   goals = [],
+  channels = [],
   onToggleComplete,
   onClick,
   onDelete,
@@ -59,7 +63,13 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   const isDone = task.status === 'completed';
   const hasTime = Boolean(task.startTime && task.startTime.trim() !== '');
   const duration = calculateMinutes(task.startTime, task.endTime, task.duration || task.durationMinutes);
+  
   const linkedGoal = task.goalId ? goals.find((g) => g.id === task.goalId) : undefined;
+  const linkedChannel = task.channelId ? channels.find((c) => c.id === task.channelId) : undefined;
+
+  const totalSubtasks = task.subtasks?.length || 0;
+  const completedSubtasks = task.subtasks?.filter((s) => s.done).length || 0;
+  const hasNotes = Boolean(task.notes && task.notes.trim() !== '') || (task.notesCount && task.notesCount > 0);
 
   const formattedTimeRange = hasTime
     ? task.endTime
@@ -97,10 +107,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         </span>
       </div>
 
-      {/* 3. Bottom Row: Checkbox on left, subtle goal/tag pill on right & hover actions */}
-      <div className="flex items-center justify-between pt-0.5">
-        {/* Left: Checkbox + extra icons */}
-        <div className="flex items-center gap-1.5">
+      {/* 3. Bottom Row: Checkbox on left, metadata chips (channel, subtasks, notes, goal), hover actions */}
+      <div className="flex items-center justify-between pt-0.5 gap-2 flex-wrap">
+        {/* Left: Checkbox & Metadata badges */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Checkbox button */}
           <button
             type="button"
             onClick={(e) => {
@@ -117,18 +128,67 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             {isDone && <Check className="w-2.5 h-2.5 stroke-[3]" />}
           </button>
 
-          {task.notes && (
-            <span title="Notes" className="text-text-secondary/60">
-              <FileText className="w-2.5 h-2.5" />
+          {/* Channel Tag chip */}
+          {linkedChannel && (
+            <span
+              className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded-md border"
+              style={{
+                backgroundColor: `${linkedChannel.color}15`,
+                borderColor: `${linkedChannel.color}40`,
+                color: linkedChannel.color,
+              }}
+              title={`Channel: #${linkedChannel.name}`}
+            >
+              <Hash className="w-2.5 h-2.5 shrink-0" />
+              <span className="truncate max-w-[90px]">{linkedChannel.name}</span>
             </span>
           )}
 
+          {/* Subtask count pill */}
+          {totalSubtasks > 0 && (
+            <span
+              className="inline-flex items-center gap-1 text-[10px] font-mono text-text-secondary bg-surface hairline-border px-1.5 py-0.5 rounded"
+              title={`${completedSubtasks} of ${totalSubtasks} subtasks completed`}
+            >
+              <CheckSquare className="w-2.5 h-2.5 text-text-secondary" />
+              <span>
+                {completedSubtasks}/{totalSubtasks}
+              </span>
+            </span>
+          )}
+
+          {/* Comment / Notes Icon */}
+          {hasNotes && (
+            <span
+              title={task.notes || `${task.notesCount || 1} notes`}
+              className="inline-flex items-center gap-0.5 text-[10px] font-mono text-text-secondary hover:text-text-main"
+            >
+              <MessageSquare className="w-2.5 h-2.5 text-text-secondary" />
+              {task.notesCount && task.notesCount > 1 ? (
+                <span>{task.notesCount}</span>
+              ) : null}
+            </span>
+          )}
+
+          {/* Linked Goal Pill */}
+          {linkedGoal && (
+            <span
+              className="inline-flex items-center gap-1 text-[10px] text-text-secondary bg-surface hairline-border px-1.5 py-0.5 rounded-full"
+              title={`Goal: ${linkedGoal.title}`}
+            >
+              <Target className="w-2.5 h-2.5 text-red-main shrink-0" />
+              <span className="truncate max-w-[80px]">{linkedGoal.title}</span>
+            </span>
+          )}
+
+          {/* Recurring indicator */}
           {task.recurrence && task.recurrence !== 'none' && (
-            <span title="Recurring" className="text-text-secondary/60">
+            <span title="Recurring task" className="text-text-secondary/60">
               <RotateCw className="w-2.5 h-2.5" />
             </span>
           )}
 
+          {/* Music Beat Indicator */}
           {task.associatedBeatId && (
             <span title="Beat Attached" className="text-music-accent">
               <Music className="w-2.5 h-2.5" />
@@ -136,48 +196,34 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           )}
         </div>
 
-        {/* Right: Subtle Goal pill / Hover action controls */}
-        <div className="flex items-center gap-1">
-          {/* Hover actions */}
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            {onQuickRescheduleTomorrow && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onQuickRescheduleTomorrow(task);
-                }}
-                className="p-0.5 rounded hover:bg-surface text-text-secondary hover:text-text-main transition-colors cursor-pointer"
-                title="Move to tomorrow"
-              >
-                <ArrowRight className="w-3 h-3" />
-              </button>
-            )}
-
-            {onDelete && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(task.id);
-                }}
-                className="p-0.5 rounded hover:bg-surface text-text-secondary hover:text-red-main transition-colors cursor-pointer"
-                title="Delete task"
-              >
-                <Trash2 className="w-3 h-3" />
-              </button>
-            )}
-          </div>
-
-          {/* Goal pill */}
-          {linkedGoal && (
-            <span
-              className="inline-flex items-center gap-1 text-[10px] text-text-secondary bg-surface hairline-border px-1.5 py-0.5 rounded-full"
-              title={`Goal: ${linkedGoal.title}`}
+        {/* Right: Hover Quick Actions */}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-auto">
+          {onQuickRescheduleTomorrow && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onQuickRescheduleTomorrow(task);
+              }}
+              className="p-0.5 rounded hover:bg-surface text-text-secondary hover:text-text-main transition-colors cursor-pointer"
+              title="Move to tomorrow"
             >
-              <Target className="w-2.5 h-2.5 text-red-main shrink-0" />
-              <span className="truncate max-w-[90px]">{linkedGoal.title}</span>
-            </span>
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          )}
+
+          {onDelete && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(task.id);
+              }}
+              className="p-0.5 rounded hover:bg-surface text-text-secondary hover:text-red-main transition-colors cursor-pointer"
+              title="Delete task"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
           )}
         </div>
       </div>

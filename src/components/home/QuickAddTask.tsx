@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Clock, Target, X, Plus, ChevronDown, Check } from 'lucide-react';
-import { Priority, Goal } from '../../types';
+import { Clock, Target, X, Plus, Check, Hash } from 'lucide-react';
+import { Priority, Goal, Channel } from '../../types';
 
 export interface QuickAddTaskProps {
   dateStr: string;
   goals?: Goal[];
+  channels?: Channel[];
   onCreateGoal?: (title: string) => Promise<string>;
+  onCreateChannel?: (name: string, color?: string) => Promise<string>;
   onSave: (taskData: {
     title: string;
     date: string;
@@ -14,6 +16,7 @@ export interface QuickAddTaskProps {
     durationMinutes?: number;
     priority?: Priority;
     goalId?: string;
+    channelId?: string;
     notes?: string;
   }) => Promise<void> | void;
   onCancel: () => void;
@@ -22,7 +25,9 @@ export interface QuickAddTaskProps {
 export const QuickAddTask: React.FC<QuickAddTaskProps> = ({
   dateStr,
   goals = [],
+  channels = [],
   onCreateGoal,
+  onCreateChannel,
   onSave,
   onCancel,
 }) => {
@@ -30,10 +35,14 @@ export const QuickAddTask: React.FC<QuickAddTaskProps> = ({
   const [duration, setDuration] = useState<number>(30);
   const [startTime, setStartTime] = useState<string>('');
   const [goalId, setGoalId] = useState<string>('');
+  const [channelId, setChannelId] = useState<string>('');
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showGoalPicker, setShowGoalPicker] = useState(false);
+  const [showChannelPicker, setShowChannelPicker] = useState(false);
   const [isCreatingGoal, setIsCreatingGoal] = useState(false);
   const [newGoalTitle, setNewGoalTitle] = useState('');
+  const [isCreatingChannel, setIsCreatingChannel] = useState(false);
+  const [newChannelName, setNewChannelName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -58,10 +67,12 @@ export const QuickAddTask: React.FC<QuickAddTaskProps> = ({
         setShowTimePicker(false);
       } else if (showGoalPicker) {
         setShowGoalPicker(false);
+      } else if (showChannelPicker) {
+        setShowChannelPicker(false);
       } else {
         onCancel();
       }
-    } else if (e.key === 'Enter' && !e.shiftKey && !isCreatingGoal) {
+    } else if (e.key === 'Enter' && !e.shiftKey && !isCreatingGoal && !isCreatingChannel) {
       e.preventDefault();
       await handleSubmit();
     }
@@ -81,6 +92,7 @@ export const QuickAddTask: React.FC<QuickAddTaskProps> = ({
         durationMinutes: duration,
         priority: 'medium',
         goalId: goalId || undefined,
+        channelId: channelId || undefined,
       });
 
       // Clear input and keep focused for frictionless Sunsama continuous entry
@@ -101,7 +113,18 @@ export const QuickAddTask: React.FC<QuickAddTaskProps> = ({
     inputRef.current?.focus();
   };
 
+  const handleCreateNewChannelSubmit = async () => {
+    if (!newChannelName.trim() || !onCreateChannel) return;
+    const createdId = await onCreateChannel(newChannelName.trim());
+    setChannelId(createdId);
+    setNewChannelName('');
+    setIsCreatingChannel(false);
+    setShowChannelPicker(false);
+    inputRef.current?.focus();
+  };
+
   const selectedGoal = goals.find((g) => g.id === goalId);
+  const selectedChannel = channels.find((c) => c.id === channelId);
 
   return (
     <div
@@ -173,7 +196,11 @@ export const QuickAddTask: React.FC<QuickAddTaskProps> = ({
           ) : (
             <button
               type="button"
-              onClick={() => setShowTimePicker(!showTimePicker)}
+              onClick={() => {
+                setShowTimePicker(!showTimePicker);
+                setShowGoalPicker(false);
+                setShowChannelPicker(false);
+              }}
               className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface/50 border border-border-main/40 text-text-secondary hover:text-text-main transition-colors cursor-pointer text-[10px]"
             >
               <Clock className="w-2.5 h-2.5" />
@@ -205,6 +232,109 @@ export const QuickAddTask: React.FC<QuickAddTaskProps> = ({
           )}
         </div>
 
+        {/* Channel Pill */}
+        <div className="relative">
+          {selectedChannel ? (
+            <div
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px]"
+              style={{
+                backgroundColor: `${selectedChannel.color}15`,
+                borderColor: `${selectedChannel.color}40`,
+                color: selectedChannel.color,
+              }}
+            >
+              <Hash className="w-2.5 h-2.5 shrink-0" />
+              <span className="max-w-[80px] truncate">{selectedChannel.name}</span>
+              <button
+                type="button"
+                onClick={() => setChannelId('')}
+                className="text-text-secondary hover:text-text-main ml-0.5"
+              >
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setShowChannelPicker(!showChannelPicker);
+                setShowGoalPicker(false);
+                setShowTimePicker(false);
+              }}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface/50 border border-border-main/40 text-text-secondary hover:text-text-main transition-colors cursor-pointer text-[10px]"
+            >
+              <Hash className="w-2.5 h-2.5" />
+              <span>+ Channel</span>
+            </button>
+          )}
+
+          {showChannelPicker && (
+            <div className="absolute left-0 top-full mt-1 z-30 w-48 p-1.5 bg-surface border border-border-main/60 rounded-lg shadow-xl space-y-1">
+              <div className="text-[9px] uppercase font-mono text-text-secondary px-1 py-0.5">
+                Select Channel
+              </div>
+
+              {channels.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    setChannelId(c.id);
+                    setShowChannelPicker(false);
+                    inputRef.current?.focus();
+                  }}
+                  className="w-full text-left px-2 py-1 rounded text-xs text-text-main hover:bg-bg-main flex items-center justify-between transition-colors"
+                >
+                  <span className="flex items-center gap-1.5 truncate">
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ backgroundColor: c.color }}
+                    />
+                    <span className="truncate">{c.name}</span>
+                  </span>
+                  {channelId === c.id && <Check className="w-3 h-3 text-red-main" />}
+                </button>
+              ))}
+
+              {isCreatingChannel ? (
+                <div className="flex items-center gap-1 pt-1 border-t border-border-main/40">
+                  <input
+                    type="text"
+                    value={newChannelName}
+                    onChange={(e) => setNewChannelName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleCreateNewChannelSubmit();
+                      if (e.key === 'Escape') setIsCreatingChannel(false);
+                    }}
+                    placeholder="New channel name..."
+                    className="flex-1 bg-bg-main text-text-main text-[11px] rounded px-1.5 py-1 border border-border-main/50 focus:outline-none"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCreateNewChannelSubmit}
+                    disabled={!newChannelName.trim()}
+                    className="px-1.5 py-1 rounded bg-red-main text-white text-[10px] disabled:opacity-40"
+                  >
+                    Add
+                  </button>
+                </div>
+              ) : (
+                onCreateChannel && (
+                  <button
+                    type="button"
+                    onClick={() => setIsCreatingChannel(true)}
+                    className="w-full text-left px-2 py-1 rounded text-[11px] text-red-main hover:bg-red-main/10 flex items-center gap-1 transition-colors"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Create Channel...</span>
+                  </button>
+                )
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Goal Tag Pill */}
         <div className="relative">
           {selectedGoal ? (
@@ -222,7 +352,11 @@ export const QuickAddTask: React.FC<QuickAddTaskProps> = ({
           ) : (
             <button
               type="button"
-              onClick={() => setShowGoalPicker(!showGoalPicker)}
+              onClick={() => {
+                setShowGoalPicker(!showGoalPicker);
+                setShowTimePicker(false);
+                setShowChannelPicker(false);
+              }}
               className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface/50 border border-border-main/40 text-text-secondary hover:text-text-main transition-colors cursor-pointer text-[10px]"
             >
               <Target className="w-2.5 h-2.5" />

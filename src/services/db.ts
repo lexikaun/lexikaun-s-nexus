@@ -10,7 +10,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { db, auth } from '../config/firebase';
-import { Goal, Task, Beat, Playlist, MusicSession, DailyReview, Habit } from '../types';
+import { Goal, Task, Beat, Playlist, MusicSession, DailyReview, Habit, Channel } from '../types';
 import { generateSampleData } from './sampleData';
 
 const LOCAL_STORAGE_KEY_PREFIX = 'lifebeatos_';
@@ -830,3 +830,60 @@ export function subscribeToDailyReviews(userId: string, callback: (reviews: Dail
     return () => {};
   }
 }
+
+export const DEFAULT_CHANNELS: Channel[] = [
+  { id: 'chan_beat', name: 'Beat Production', color: '#ef4444' },
+  { id: 'chan_research', name: 'Research', color: '#3b82f6' },
+  { id: 'chan_creative', name: 'Creative Flow', color: '#ec4899' },
+  { id: 'chan_code', name: 'Engineering', color: '#10b981' },
+  { id: 'chan_life', name: 'Life & Admin', color: '#f59e0b' },
+];
+
+export function subscribeToChannels(userId: string, callback: (channels: Channel[]) => void): () => void {
+  const local = loadLocal<Channel[]>(`channels_${userId}`, DEFAULT_CHANNELS);
+  callback(local);
+
+  if (!auth.currentUser || auth.currentUser.uid !== userId) {
+    return () => {};
+  }
+
+  const path = `users/${userId}/channels`;
+  try {
+    const ref = collection(db, 'users', userId, 'channels');
+    const unsubscribe = onSnapshot(
+      ref,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const channels = snapshot.docs.map((d) => d.data() as Channel);
+          saveLocal(`channels_${userId}`, channels);
+          callback(channels);
+        } else {
+          callback(local);
+        }
+      },
+      (error) => {
+        console.warn('Channel snapshot error:', error);
+      }
+    );
+    return unsubscribe;
+  } catch (error) {
+    console.warn('Channel subscribe error:', error);
+    return () => {};
+  }
+}
+
+export async function createChannel(userId: string, channel: Channel): Promise<Channel> {
+  const current = loadLocal<Channel[]>(`channels_${userId}`, DEFAULT_CHANNELS);
+  const updated = [...current.filter((c) => c.id !== channel.id), channel];
+  saveLocal(`channels_${userId}`, updated);
+
+  if (auth.currentUser && auth.currentUser.uid === userId) {
+    try {
+      await setDoc(doc(db, 'users', userId, 'channels', channel.id), sanitizeDoc(channel));
+    } catch (err) {
+      console.warn('Create channel firestore error:', err);
+    }
+  }
+  return channel;
+}
+

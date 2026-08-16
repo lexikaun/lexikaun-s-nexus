@@ -49,12 +49,26 @@ export interface Goal {
   updatedAt?: number;
 }
 
+export interface Channel {
+  id: string;
+  name: string;
+  color: string; // hex or tailwind-compatible color
+  space?: string;
+}
+
+export interface TaskSubtask {
+  id: string;
+  title: string;
+  done: boolean;
+}
+
 export interface Task {
   id: string;
   userId: string;
   /** @deprecated Optional legacy field. New tasks do not require or write a space tag. */
   space?: SpaceType;
   goalId?: string;
+  channelId?: string | null;
   title: string;
   description?: string;
   date: string; // YYYY-MM-DD
@@ -64,6 +78,8 @@ export interface Task {
   durationMinutes?: number; // Legacy compatibility
   priority: Priority;
   status: TaskStatus;
+  subtasks?: TaskSubtask[];
+  notesCount?: number;
   associatedBeatId?: string; // Links task directly to a self-produced beat
   recurrence?: RecurrenceRule | RecurrenceType;
   notes?: string;
