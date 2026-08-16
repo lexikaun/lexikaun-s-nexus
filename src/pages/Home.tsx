@@ -19,8 +19,6 @@ import { DayColumn } from '../components/home/DayColumn';
 import { CalendarPanel } from '../components/home/CalendarPanel';
 import { TaskScheduleModal } from '../components/home/TaskScheduleModal';
 import { TaskCard } from '../components/home/TaskCard';
-import { DailyPlanningModal } from '../components/rituals/DailyPlanningModal';
-import { DailyShutdownModal } from '../components/rituals/DailyShutdownModal';
 import { useAuth } from '../context/useAuth';
 import {
   subscribeToTasks,
@@ -81,10 +79,6 @@ export const Home: React.FC = () => {
   // Backlog Drawer Toggle
   const [isBacklogOpen, setIsBacklogOpen] = useState<boolean>(false);
 
-  // Ritual Modals
-  const [isDailyPlanningOpen, setIsDailyPlanningOpen] = useState<boolean>(false);
-  const [isDailyShutdownOpen, setIsDailyShutdownOpen] = useState<boolean>(false);
-
   // Subscribe to live tasks, goals, channels from Firestore / local cache
   useEffect(() => {
     const unsubTasks = subscribeToTasks(userId, (loadedTasks) => {
@@ -97,12 +91,10 @@ export const Home: React.FC = () => {
       setChannels(loadedChannels);
     });
 
-    // Listen for custom ritual triggers from Sidebar
+    // Listen for custom backlog triggers from Sidebar
     const handleRitualEvent = (e: Event) => {
       const customEvent = e as CustomEvent<{ ritual: string }>;
       const ritual = customEvent.detail?.ritual;
-      if (ritual === 'daily-planning') setIsDailyPlanningOpen(true);
-      if (ritual === 'daily-shutdown') setIsDailyShutdownOpen(true);
       if (ritual === 'backlog') setIsBacklogOpen(true);
     };
 
@@ -656,23 +648,6 @@ export const Home: React.FC = () => {
           onDelete={handleDeleteTask}
         />
       )}
-
-      {/* Rituals Modals */}
-      <DailyPlanningModal
-        isOpen={isDailyPlanningOpen}
-        onClose={() => setIsDailyPlanningOpen(false)}
-        tasks={rawTasks}
-        goals={goals}
-        onRescheduleTask={handleRescheduleFromRitual}
-        onSelectTask={(t) => setSelectedTaskForEdit(t)}
-      />
-
-      <DailyShutdownModal
-        isOpen={isDailyShutdownOpen}
-        onClose={() => setIsDailyShutdownOpen(false)}
-        tasks={rawTasks}
-        onRescheduleTask={handleRescheduleFromRitual}
-      />
     </div>
   );
 };
