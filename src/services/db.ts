@@ -5,7 +5,9 @@ import {
   deleteDoc,
   onSnapshot,
   getDocs,
+  getDoc,
   getDocFromServer,
+  updateDoc,
 } from 'firebase/firestore';
 import { db, auth } from '../config/firebase';
 import { Goal, Task, Beat, Playlist, MusicSession, DailyReview, Habit } from '../types';
@@ -178,6 +180,65 @@ export function subscribeToGoals(userId: string, callback: (goals: Goal[]) => vo
   }
 }
 
+export async function createGoal(userId: string, goal: Goal): Promise<Goal> {
+  const goalWithTimestamps: Goal = {
+    ...goal,
+    userId,
+    createdAt: goal.createdAt || Date.now(),
+    updatedAt: Date.now(),
+  };
+  await saveGoal(userId, goalWithTimestamps);
+  return goalWithTimestamps;
+}
+
+export async function getGoal(userId: string, goalId: string): Promise<Goal | null> {
+  if (auth.currentUser && auth.currentUser.uid === userId) {
+    try {
+      const snap = await getDoc(doc(db, 'users', userId, 'goals', goalId));
+      if (snap.exists()) {
+        return snap.data() as Goal;
+      }
+    } catch (err) {
+      console.warn('Firestore getGoal error, falling back to local cache:', err);
+    }
+  }
+  const localGoals = loadLocal<Goal[]>(`goals_${userId}`, []);
+  return localGoals.find((g) => g.id === goalId) || null;
+}
+
+export async function getGoals(userId: string): Promise<Goal[]> {
+  if (auth.currentUser && auth.currentUser.uid === userId) {
+    try {
+      const snap = await getDocs(collection(db, 'users', userId, 'goals'));
+      if (!snap.empty) {
+        const goals = snap.docs.map((d) => d.data() as Goal);
+        saveLocal(`goals_${userId}`, goals);
+        return goals;
+      }
+    } catch (err) {
+      console.warn('Firestore getGoals error, falling back to local cache:', err);
+    }
+  }
+  return loadLocal<Goal[]>(`goals_${userId}`, []);
+}
+
+export async function updateGoal(userId: string, goalId: string, updates: Partial<Goal>): Promise<Goal> {
+  const existingGoal = await getGoal(userId, goalId);
+  const updatedGoal: Goal = {
+    ...(existingGoal || { id: goalId, userId, title: '', priority: 'medium', status: 'active' }),
+    ...updates,
+    id: goalId,
+    userId,
+    updatedAt: Date.now(),
+  };
+  await saveGoal(userId, updatedGoal);
+  return updatedGoal;
+}
+
+export async function deleteGoal(userId: string, goalId: string): Promise<void> {
+  return deleteGoalDoc(userId, goalId);
+}
+
 export async function saveGoal(userId: string, goal: Goal): Promise<void> {
   const current = loadLocal<Goal[]>(`goals_${userId}`, []);
   const idx = current.findIndex((g) => g.id === goal.id);
@@ -320,6 +381,74 @@ export function subscribeToTasks(userId: string, callback: (tasks: Task[]) => vo
     handleFirestoreError(error, OperationType.GET, path);
     return () => {};
   }
+}
+
+export async function createTask(userId: string, task: Task): Promise<Task> {
+  const taskWithTimestamps: Task = {
+    ...task,
+    userId,
+    createdAt: task.createdAt || Date.now(),
+    updatedAt: Date.now(),
+  };
+  await saveTask(userId, taskWithTimestamps);
+  return taskWithTimestamps;
+}
+
+export async function getTask(userId: string, taskId: string): Promise<Task | null> {
+  if (auth.currentUser && auth.currentUser.uid === userId) {
+    try {
+      const snap = await getDoc(doc(db, 'users', userId, 'tasks', taskId));
+      if (snap.exists()) {
+        return snap.data() as Task;
+      }
+    } catch (err) {
+      console.warn('Firestore getTask error, falling back to local cache:', err);
+    }
+  }
+  const localTasks = loadLocal<Task[]>(`tasks_${userId}`, []);
+  return localTasks.find((t) => t.id === taskId) || null;
+}
+
+export async function getTasks(userId: string): Promise<Task[]> {
+  if (auth.currentUser && auth.currentUser.uid === userId) {
+    try {
+      const snap = await getDocs(collection(db, 'users', userId, 'tasks'));
+      if (!snap.empty) {
+        const tasks = snap.docs.map((d) => d.data() as Task);
+        saveLocal(`tasks_${userId}`, tasks);
+        return tasks;
+      }
+    } catch (err) {
+      console.warn('Firestore getTasks error, falling back to local cache:', err);
+    }
+  }
+  return loadLocal<Task[]>(`tasks_${userId}`, []);
+}
+
+export async function updateTask(userId: string, taskId: string, updates: Partial<Task>): Promise<Task> {
+  const existingTask = await getTask(userId, taskId);
+  const updatedTask: Task = {
+    ...(existingTask || {
+      id: taskId,
+      userId,
+      title: '',
+      date: new Date().toISOString().split('T')[0],
+      startTime: '09:00',
+      endTime: '10:00',
+      priority: 'medium',
+      status: 'planned',
+    }),
+    ...updates,
+    id: taskId,
+    userId,
+    updatedAt: Date.now(),
+  };
+  await saveTask(userId, updatedTask);
+  return updatedTask;
+}
+
+export async function deleteTask(userId: string, taskId: string): Promise<void> {
+  return deleteTaskDoc(userId, taskId);
 }
 
 export async function saveTask(userId: string, task: Task): Promise<void> {
