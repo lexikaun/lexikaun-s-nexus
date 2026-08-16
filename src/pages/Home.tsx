@@ -394,10 +394,18 @@ export const Home: React.FC = () => {
           isOpen={isCalendarOpen}
           onClose={() => setIsCalendarOpen(false)}
           selectedDate={selectedCalendarDate}
+          visibleDates={visibleDates}
           onSelectDate={(date) => {
             setSelectedCalendarDate(date);
           }}
           tasksForDate={tasksForSelectedDate}
+          allTasks={rawTasks}
+          onSelectTask={(task) => {
+            setSelectedTaskForEdit(task);
+          }}
+          onAddSlotTask={(start, end, dateStr) => {
+            setActiveAddingDate(dateStr);
+          }}
         />
       </div>
 
