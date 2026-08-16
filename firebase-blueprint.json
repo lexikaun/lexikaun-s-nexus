@@ -1,0 +1,448 @@
+{
+  "entities": {
+    "goal": {
+      "title": "Goal",
+      "description": "A daily or long-term objective for productivity and music production",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the goal",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner UID",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Goal title",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed goal notes",
+          "maxLength": 3000
+        },
+        "date": {
+          "type": "string",
+          "description": "Target date string (YYYY-MM-DD)",
+          "maxLength": 32
+        },
+        "priority": {
+          "type": "string",
+          "description": "Priority level",
+          "enum": ["low", "medium", "high", "critical"]
+        },
+        "status": {
+          "type": "string",
+          "description": "Current goal status",
+          "enum": ["active", "completed", "archived"]
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Creation timestamp in milliseconds"
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Update timestamp in milliseconds"
+        }
+      },
+      "required": ["id", "userId", "title", "priority", "status", "createdAt", "updatedAt"]
+    },
+    "task": {
+      "title": "Task",
+      "description": "Scheduled time-blocked activity or action item",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique task ID",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner UID",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "goalId": {
+          "type": "string",
+          "description": "Parent goal ID if associated",
+          "maxLength": 128
+        },
+        "title": {
+          "type": "string",
+          "description": "Task name",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "description": {
+          "type": "string",
+          "description": "Task details",
+          "maxLength": 3000
+        },
+        "date": {
+          "type": "string",
+          "description": "Date of scheduled task (YYYY-MM-DD)",
+          "maxLength": 32
+        },
+        "startTime": {
+          "type": "string",
+          "description": "Start time in HH:mm 24-hour format",
+          "maxLength": 16
+        },
+        "endTime": {
+          "type": "string",
+          "description": "End time in HH:mm 24-hour format",
+          "maxLength": 16
+        },
+        "durationMinutes": {
+          "type": "number",
+          "description": "Scheduled duration in minutes"
+        },
+        "priority": {
+          "type": "string",
+          "description": "Task priority",
+          "enum": ["low", "medium", "high", "critical"]
+        },
+        "status": {
+          "type": "string",
+          "description": "Task execution state",
+          "enum": ["planned", "in_progress", "completed", "skipped", "rescheduled"]
+        },
+        "notes": {
+          "type": "string",
+          "description": "Session reflections or task notes",
+          "maxLength": 3000
+        },
+        "recurrence": {
+          "type": "string",
+          "description": "Recurrence cadence",
+          "enum": ["none", "daily", "weekdays", "weekly"]
+        },
+        "associatedBeatId": {
+          "type": "string",
+          "description": "Linked beat ID for production sessions",
+          "maxLength": 128
+        },
+        "completedAt": {
+          "type": "number",
+          "description": "Timestamp when completed"
+        },
+        "actualDurationMinutes": {
+          "type": "number",
+          "description": "Actual elapsed time"
+        },
+        "order": {
+          "type": "number",
+          "description": "Sort ordering index"
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Creation timestamp in milliseconds"
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Update timestamp in milliseconds"
+        }
+      },
+      "required": ["id", "userId", "title", "date", "startTime", "endTime", "durationMinutes", "priority", "status", "order", "createdAt", "updatedAt"]
+    },
+    "beat": {
+      "title": "Beat",
+      "description": "Music beat, instrumental track, or production project in library",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique beat ID",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner UID",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Track title",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "audioUrl": {
+          "type": "string",
+          "description": "Audio URL or storage location",
+          "maxLength": 2048
+        },
+        "audioBlobId": {
+          "type": "string",
+          "description": "Local indexedDB blob identifier",
+          "maxLength": 256
+        },
+        "duration": {
+          "type": "number",
+          "description": "Track duration in seconds"
+        },
+        "bpm": {
+          "type": "number",
+          "description": "Tempo in beats per minute"
+        },
+        "key": {
+          "type": "string",
+          "description": "Musical key",
+          "maxLength": 32
+        },
+        "genre": {
+          "type": "string",
+          "description": "Musical genre",
+          "maxLength": 64
+        },
+        "tags": {
+          "type": "array",
+          "description": "Descriptive mood and subgenre tags"
+        },
+        "status": {
+          "type": "string",
+          "description": "Production stage",
+          "enum": ["wip", "finished", "released", "archived"]
+        },
+        "notes": {
+          "type": "string",
+          "description": "Arrangement, plugin, or lyric notes",
+          "maxLength": 4000
+        },
+        "coverUrl": {
+          "type": "string",
+          "description": "Cover art image URL",
+          "maxLength": 2048
+        },
+        "color": {
+          "type": "string",
+          "description": "Hex accent theme color",
+          "maxLength": 32
+        },
+        "isFavorite": {
+          "type": "boolean",
+          "description": "Favorite bookmark indicator"
+        },
+        "fileFormat": {
+          "type": "string",
+          "description": "Audio container format (mp3, wav, flac)",
+          "maxLength": 32
+        },
+        "fileSize": {
+          "type": "number",
+          "description": "File size in bytes"
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Creation timestamp in milliseconds"
+        },
+        "uploadedAt": {
+          "type": "number",
+          "description": "Upload timestamp in milliseconds"
+        }
+      },
+      "required": ["id", "userId", "title", "audioUrl", "duration", "bpm", "key", "genre", "status", "createdAt", "uploadedAt"]
+    },
+    "playlist": {
+      "title": "Playlist",
+      "description": "Curated collection of beats and tracks",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique playlist identifier",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner UID",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Playlist name",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string",
+          "description": "Playlist description and vibe notes",
+          "maxLength": 2000
+        },
+        "beatIds": {
+          "type": "array",
+          "description": "Ordered list of beat IDs contained in playlist"
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Creation timestamp in milliseconds"
+        }
+      },
+      "required": ["id", "userId", "name", "beatIds", "createdAt"]
+    },
+    "musicSession": {
+      "title": "Music Session",
+      "description": "Dedicated focused studio session tracking time and production notes",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique session ID",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner UID",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "beatId": {
+          "type": "string",
+          "description": "Associated beat ID",
+          "maxLength": 128
+        },
+        "beatTitle": {
+          "type": "string",
+          "description": "Beat title snapshot",
+          "maxLength": 200
+        },
+        "startTime": {
+          "type": "number",
+          "description": "Start timestamp in milliseconds"
+        },
+        "endTime": {
+          "type": "number",
+          "description": "End timestamp in milliseconds"
+        },
+        "durationSeconds": {
+          "type": "number",
+          "description": "Elapsed session duration in seconds"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Studio workflow and log notes",
+          "maxLength": 5000
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Creation timestamp in milliseconds"
+        }
+      },
+      "required": ["id", "userId", "startTime", "durationSeconds", "notes", "createdAt"]
+    },
+    "dailyReview": {
+      "title": "Daily Review",
+      "description": "End of day reflection and performance metrics log",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Review record ID (e.g. rev_YYYY-MM-DD)",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner UID",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "date": {
+          "type": "string",
+          "description": "Date of review (YYYY-MM-DD)",
+          "maxLength": 32
+        },
+        "goalsCompleted": {
+          "type": "number",
+          "description": "Number of goals finished"
+        },
+        "totalGoals": {
+          "type": "number",
+          "description": "Total active goals"
+        },
+        "tasksCompleted": {
+          "type": "number",
+          "description": "Tasks finished"
+        },
+        "tasksMissed": {
+          "type": "number",
+          "description": "Tasks missed or skipped"
+        },
+        "tasksRescheduled": {
+          "type": "number",
+          "description": "Tasks pushed forward"
+        },
+        "totalPlannedMinutes": {
+          "type": "number",
+          "description": "Total scheduled minutes"
+        },
+        "totalCompletedMinutes": {
+          "type": "number",
+          "description": "Total executed minutes"
+        },
+        "completionRate": {
+          "type": "number",
+          "description": "Percentage completed"
+        },
+        "whatWentWell": {
+          "type": "string",
+          "description": "Positive accomplishments and high points",
+          "maxLength": 3000
+        },
+        "whatToImprove": {
+          "type": "string",
+          "description": "Bottlenecks, focus leaks, and learnings",
+          "maxLength": 3000
+        },
+        "moodRating": {
+          "type": "number",
+          "description": "Self-reported energy/focus rating (1-5)"
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Creation timestamp in milliseconds"
+        }
+      },
+      "required": ["id", "userId", "date", "goalsCompleted", "totalGoals", "tasksCompleted", "tasksMissed", "tasksRescheduled", "totalPlannedMinutes", "totalCompletedMinutes", "completionRate", "whatWentWell", "whatToImprove", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/goals/{goalId}": {
+      "schema": "goal",
+      "description": "Personal goals collection for the authenticated user"
+    },
+    "/users/{userId}/tasks/{taskId}": {
+      "schema": "task",
+      "description": "Daily scheduled tasks and time-blocked events for the authenticated user"
+    },
+    "/users/{userId}/beats/{beatId}": {
+      "schema": "beat",
+      "description": "Private music beats and audio library tracks for the authenticated user"
+    },
+    "/users/{userId}/playlists/{playlistId}": {
+      "schema": "playlist",
+      "description": "Custom curated playlists of beats for the authenticated user"
+    },
+    "/users/{userId}/musicSessions/{sessionId}": {
+      "schema": "musicSession",
+      "description": "Focused studio sessions and production time logs for the authenticated user"
+    },
+    "/users/{userId}/dailyReviews/{reviewId}": {
+      "schema": "dailyReview",
+      "description": "End-of-day productivity reviews and reflection logs for the authenticated user"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Lexikaun's Nexus",
+  "description": "Lexikaun's Nexus - A personal daily planning, time blocking, and private beat library operating system.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
