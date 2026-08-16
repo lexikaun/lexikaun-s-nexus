@@ -137,44 +137,85 @@ export const ProfessionalToday: React.FC = () => {
         </Button>
       </div>
 
-      {/* Current Focus Card */}
+      {/* Today's Focus Section */}
+      {goals.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs uppercase tracking-wider text-text-secondary font-medium">
+              Today's Focus ({goals.filter((g) => g.status === 'active').length} Active Goals)
+            </span>
+          </div>
+
+          <div className="divide-y divide-border-main hairline-border rounded-lg bg-bg-main">
+            {goals.filter((g) => g.status === 'active').slice(0, 3).map((goal) => {
+              const linkedTasks = tasks.filter((t) => t.goalId === goal.id);
+              const doneCount = linkedTasks.filter((t) => t.status === 'completed').length;
+              return (
+                <div
+                  key={goal.id}
+                  className="py-3 px-3 flex items-center justify-between hover:bg-surface/40 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-surface hairline-border text-red-main font-mono uppercase">
+                      {goal.priority}
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-normal text-text-main">{goal.title}</h3>
+                      {goal.description && (
+                        <p className="text-xs text-text-secondary line-clamp-1">{goal.description}</p>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-xs text-text-secondary font-mono">
+                    {doneCount}/{linkedTasks.length} tasks
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Current Task Section (Divider row style) */}
       {activeTask && (
         <div>
           <span className="text-xs uppercase tracking-wider text-text-secondary font-medium block mb-2">
-            Current Focus
+            Current Task
           </span>
-          <Card className="p-4 border-l-2 border-l-red-main">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1.5">
-                <span className="text-xs text-red-main font-medium inline-flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-main animate-pulse" />
-                  Focus ({activeTask.startTime} – {activeTask.endTime})
-                </span>
-                <h2 className="text-sm font-medium text-text-main">{activeTask.title}</h2>
-                <div className="flex items-center gap-4 text-xs text-text-secondary pt-0.5">
-                  <span className="flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5" />
-                    {goals.find((g) => g.id === activeTask.goalId)?.title || 'Independent Focus'}
-                  </span>
-                  {activeTask.associatedBeatId && (
-                    <span className="flex items-center gap-1.5">
-                      <Disc className="w-3.5 h-3.5" />
-                      Linked Beat
+          <div className="hairline-border rounded-lg bg-bg-main border-l-2 border-l-red-main">
+            <div className="py-3 px-3 flex items-center justify-between hover:bg-surface/40 transition-colors">
+              <div className="flex items-center gap-3 min-w-0">
+                <button
+                  onClick={() => handleToggleTask(activeTask)}
+                  className="w-4 h-4 rounded border border-border-main hover:border-red-main transition-colors cursor-pointer shrink-0"
+                />
+                <div className="truncate">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-red-main font-medium inline-flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-main animate-pulse" />
+                      In Progress ({activeTask.startTime} – {activeTask.endTime})
                     </span>
-                  )}
+                    {activeTask.goalId && (
+                      <span className="text-xs text-text-secondary">
+                        • {goals.find((g) => g.id === activeTask.goalId)?.title}
+                      </span>
+                    )}
+                  </div>
+                  <h2 className="text-sm font-medium text-text-main mt-0.5 truncate">{activeTask.title}</h2>
                 </div>
               </div>
+
               <Button
                 size="sm"
                 variant="primary"
-                className="gap-2 shrink-0"
+                className="gap-2 shrink-0 ml-3"
                 onClick={() => handleToggleTask(activeTask)}
               >
                 <CheckCircle className="w-3.5 h-3.5" />
                 <span>Mark Done</span>
               </Button>
             </div>
-          </Card>
+          </div>
         </div>
       )}
 

@@ -2,18 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
-import { Check, Plus, Sun, Trash2, Clock, Calendar, Edit2 } from 'lucide-react';
+import { Check, Plus, Sun, Trash2, Clock, Calendar, Edit2, CheckCircle } from 'lucide-react';
 import { useAuth } from '../context/useAuth';
 import {
   subscribeToTasks,
   subscribeToHabits,
+  subscribeToGoals,
   createTask,
   updateTask,
   deleteTask,
   toggleHabitDate,
   createHabit,
 } from '../services/db';
-import { Task, Habit, Priority } from '../types';
+import { Task, Habit, Goal, Priority } from '../types';
 
 export const PersonalToday: React.FC = () => {
   const { user } = useAuth();
@@ -21,6 +22,7 @@ export const PersonalToday: React.FC = () => {
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [isAddHabitOpen, setIsAddHabitOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -31,6 +33,7 @@ export const PersonalToday: React.FC = () => {
   const [taskStartTime, setTaskStartTime] = useState('09:00');
   const [taskEndTime, setTaskEndTime] = useState('10:00');
   const [taskPriority, setTaskPriority] = useState<Priority>('medium');
+  const [selectedGoalId, setSelectedGoalId] = useState<string>('');
 
   // Form State for Habit
   const [habitName, setHabitName] = useState('');
@@ -48,9 +51,15 @@ export const PersonalToday: React.FC = () => {
       setHabits(loadedHabits);
     });
 
+    const unsubGoals = subscribeToGoals(userId, (loadedGoals) => {
+      const personalGoals = loadedGoals.filter((g) => !g.space || g.space === 'personal');
+      setGoals(personalGoals);
+    });
+
     return () => {
       unsubTasks();
       unsubHabits();
+      unsubGoals();
     };
   }, [userId]);
 
@@ -65,6 +74,7 @@ export const PersonalToday: React.FC = () => {
         startTime: taskStartTime,
         endTime: taskEndTime,
         priority: taskPriority,
+        goalId: selectedGoalId || undefined,
       });
       setEditingTask(null);
     } else {
@@ -78,6 +88,7 @@ export const PersonalToday: React.FC = () => {
         endTime: taskEndTime,
         priority: taskPriority,
         status: 'planned',
+        goalId: selectedGoalId || undefined,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
@@ -107,6 +118,7 @@ export const PersonalToday: React.FC = () => {
     setTaskStartTime(task.startTime || '09:00');
     setTaskEndTime(task.endTime || '10:00');
     setTaskPriority(task.priority || 'medium');
+    setSelectedGoalId(task.goalId || '');
     setIsAddTaskOpen(true);
   };
 
@@ -131,6 +143,7 @@ export const PersonalToday: React.FC = () => {
   };
 
   const completedHabitsCount = habits.filter((h) => h.completionHistory?.[todayStr]).length;
+  const activeTask = tasks.find((t) => t.status === 'in_progress') || tasks.find((t) => t.status === 'planned');
 
   return (
     <div className="space-y-6">
@@ -150,6 +163,7 @@ export const PersonalToday: React.FC = () => {
             onClick={() => {
               setEditingTask(null);
               setTaskTitle('');
+              setSelectedGoalId('');
               setIsAddTaskOpen(true);
             }}
           >
@@ -158,6 +172,81 @@ export const PersonalToday: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {/* Today's Focus (Active Goals) */}
+      {goals.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs uppercase tracking-wider text-text-secondary font-medium">
+              Today's Focus ({goals.filter((g) => g.status === 'active').length} Active Goals)
+            </span>
+          </div>
+
+          <div className="divide-y divide-border-main hairline-border rounded-lg bg-bg-main">
+            {goals.filter((g) => g.status === 'active').slice(0, 3).map((goal) => (
+              <div
+                key={goal.id}
+                className="py-3 px-3 flex items-center justify-between hover:bg-surface/40 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xs px-1.5 py-0.5 rounded bg-surface hairline-border text-red-main font-mono uppercase">
+                    {goal.priority}
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-normal text-text-main">{goal.title}</h3>
+                    {goal.description && (
+                      <p className="text-xs text-text-secondary line-clamp-1">{goal.description}</p>
+                    )}
+                  </div>
+                </div>
+                {goal.deadline && (
+                  <span className="text-xs text-text-secondary font-mono">
+                    Due {goal.deadline}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Current Task Section (Divider row) */}
+      {activeTask && (
+        <div>
+          <span className="text-xs uppercase tracking-wider text-text-secondary font-medium block mb-2">
+            Current Task
+          </span>
+          <div className="hairline-border rounded-lg bg-bg-main border-l-2 border-l-red-main">
+            <div className="py-3 px-3 flex items-center justify-between hover:bg-surface/40 transition-colors">
+              <div className="flex items-center gap-3 min-w-0">
+                <button
+                  onClick={() => handleToggleTask(activeTask)}
+                  className="w-4 h-4 rounded border border-border-main hover:border-red-main transition-colors cursor-pointer shrink-0"
+                />
+                <div className="truncate">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-red-main font-medium inline-flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-main animate-pulse" />
+                      In Progress ({activeTask.startTime} – {activeTask.endTime})
+                    </span>
+                  </div>
+                  <h2 className="text-sm font-medium text-text-main mt-0.5 truncate">{activeTask.title}</h2>
+                </div>
+              </div>
+
+              <Button
+                size="sm"
+                variant="primary"
+                className="gap-2 shrink-0 ml-3"
+                onClick={() => handleToggleTask(activeTask)}
+              >
+                <CheckCircle className="w-3.5 h-3.5" />
+                <span>Mark Done</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Habits Today Section */}
       <div>
@@ -222,7 +311,7 @@ export const PersonalToday: React.FC = () => {
       <div>
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs uppercase tracking-wider text-text-secondary font-medium block">
-            Personal Tasks ({tasks.length})
+            Upcoming & Timeline ({tasks.length} tasks)
           </span>
         </div>
 
@@ -323,18 +412,36 @@ export const PersonalToday: React.FC = () => {
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs text-text-secondary font-medium">Priority</label>
-            <select
-              value={taskPriority}
-              onChange={(e) => setTaskPriority(e.target.value as Priority)}
-              className="w-full bg-surface border border-border-main rounded-md px-3 py-2 text-sm text-text-main focus:outline-none focus:border-red-main"
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="critical">Critical</option>
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs text-text-secondary font-medium">Priority</label>
+              <select
+                value={taskPriority}
+                onChange={(e) => setTaskPriority(e.target.value as Priority)}
+                className="w-full bg-surface border border-border-main rounded-md px-3 py-2 text-sm text-text-main focus:outline-none focus:border-red-main"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs text-text-secondary font-medium">Linked Goal</label>
+              <select
+                value={selectedGoalId}
+                onChange={(e) => setSelectedGoalId(e.target.value)}
+                className="w-full bg-surface border border-border-main rounded-md px-3 py-2 text-sm text-text-main focus:outline-none focus:border-red-main"
+              >
+                <option value="">No goal (Standalone)</option>
+                {goals.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.title}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
