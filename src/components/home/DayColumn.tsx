@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Plus,
   Clock,
@@ -7,16 +7,28 @@ import {
   RotateCw,
   Music,
   Trash2,
-  Edit2,
-  Sparkles,
 } from 'lucide-react';
-import { Task } from '../../types';
+import { Task, Goal } from '../../types';
+import { QuickAddTask } from './QuickAddTask';
 
 export interface DayColumnProps {
   date: Date;
   isToday: boolean;
   tasks: Task[];
+  goals?: Goal[];
+  isAddingExternal?: boolean;
+  onCloseAddingExternal?: () => void;
   onAddTask?: (dateStr: string) => void;
+  onSaveNewTask?: (taskData: {
+    title: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    durationMinutes?: number;
+    priority: any;
+    goalId?: string;
+    notes?: string;
+  }) => Promise<void> | void;
   onToggleComplete?: (task: Task) => void;
   onDeleteTask?: (taskId: string) => void;
   onSelectTask?: (task: Task) => void;
@@ -43,13 +55,18 @@ export const DayColumn: React.FC<DayColumnProps> = ({
   date,
   isToday,
   tasks,
+  goals = [],
+  isAddingExternal = false,
+  onCloseAddingExternal,
   onAddTask,
+  onSaveNewTask,
   onToggleComplete,
   onDeleteTask,
   onSelectTask,
 }) => {
-  const dateStr = date.toISOString().split('T')[0];
+  const [isAddingInline, setIsAddingInline] = useState(false);
 
+  const dateStr = date.toISOString().split('T')[0];
   const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
   const dayNumber = date.getDate();
   const monthName = date.toLocaleDateString('en-US', { month: 'short' });
@@ -73,6 +90,25 @@ export const DayColumn: React.FC<DayColumnProps> = ({
   const totalScheduledMinutes = scheduledTasks.reduce((acc, t) => {
     return acc + calculateMinutes(t.startTime, t.endTime, t.duration || t.durationMinutes);
   }, 0);
+
+  const showQuickAdd = isAddingInline || isAddingExternal;
+
+  const handleOpenAdd = () => {
+    setIsAddingInline(true);
+    onAddTask?.(dateStr);
+  };
+
+  const handleCloseAdd = () => {
+    setIsAddingInline(false);
+    onCloseAddingExternal?.();
+  };
+
+  const handleSave = async (taskData: any) => {
+    if (onSaveNewTask) {
+      await onSaveNewTask(taskData);
+    }
+    handleCloseAdd();
+  };
 
   return (
     <div
@@ -124,7 +160,7 @@ export const DayColumn: React.FC<DayColumnProps> = ({
 
         {/* Quick Add Task Button */}
         <button
-          onClick={() => onAddTask?.(dateStr)}
+          onClick={handleOpenAdd}
           className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md bg-surface/60 hover:bg-surface border border-border-main/40 hover:border-border-main text-xs font-medium text-text-secondary hover:text-text-main transition-all cursor-pointer group"
         >
           <Plus className="w-3.5 h-3.5 text-text-secondary group-hover:text-red-main transition-colors" />
@@ -132,8 +168,20 @@ export const DayColumn: React.FC<DayColumnProps> = ({
         </button>
       </div>
 
-      {/* Column Content: Scheduled + Unscheduled sections */}
+      {/* Column Content: QuickAdd popover/row + Scheduled + Unscheduled sections */}
       <div className="flex-1 overflow-y-auto p-3 space-y-4">
+        {/* Inline Quick Add Task Form */}
+        {showQuickAdd && (
+          <div className="mb-3">
+            <QuickAddTask
+              dateStr={dateStr}
+              goals={goals}
+              onSave={handleSave}
+              onCancel={handleCloseAdd}
+            />
+          </div>
+        )}
+
         {/* 1. Scheduled Tasks Section */}
         <div className="space-y-2">
           <div className="flex items-center justify-between px-1">
@@ -157,7 +205,11 @@ export const DayColumn: React.FC<DayColumnProps> = ({
             <div className="space-y-1.5">
               {scheduledTasks.map((task) => {
                 const isDone = task.status === 'completed';
-                const duration = calculateMinutes(task.startTime, task.endTime, task.duration || task.durationMinutes);
+                const duration = calculateMinutes(
+                  task.startTime,
+                  task.endTime,
+                  task.duration || task.durationMinutes
+                );
 
                 return (
                   <div

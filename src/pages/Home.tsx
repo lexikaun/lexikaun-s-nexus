@@ -10,15 +10,22 @@ import { Button } from '../components/ui/Button';
 import { DayColumn } from '../components/home/DayColumn';
 import { CalendarPanel } from '../components/home/CalendarPanel';
 import { useAuth } from '../context/useAuth';
-import { subscribeToTasks, updateTask, deleteTask, createTask } from '../services/db';
+import {
+  subscribeToTasks,
+  subscribeToGoals,
+  updateTask,
+  deleteTask,
+  createTask,
+} from '../services/db';
 import { expandRecurringTask } from '../utils/recurrence';
-import { Task } from '../types';
+import { Task, Goal } from '../types';
 
 export const Home: React.FC = () => {
   const { user } = useAuth();
   const userId = user?.uid || 'local-producer-01';
 
   const [rawTasks, setRawTasks] = useState<Task[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
 
   // Start date for the visible range
   const [startDate, setStartDate] = useState<Date>(() => {
@@ -34,6 +41,9 @@ export const Home: React.FC = () => {
     return d;
   });
 
+  // Controls which day column has its quick-add open via top bar
+  const [activeAddingDate, setActiveAddingDate] = useState<string | null>(null);
+
   // Number of visible day columns (3, 4, 5, or 7)
   const [visibleDaysCount, setVisibleDaysCount] = useState<number>(4);
 
@@ -42,10 +52,16 @@ export const Home: React.FC = () => {
 
   // Subscribe to live tasks from Firestore / local cache (unified, no space filter)
   useEffect(() => {
-    const unsub = subscribeToTasks(userId, (loadedTasks) => {
+    const unsubTasks = subscribeToTasks(userId, (loadedTasks) => {
       setRawTasks(loadedTasks);
     });
-    return () => unsub();
+    const unsubGoals = subscribeToGoals(userId, (loadedGoals) => {
+      setGoals(loadedGoals);
+    });
+    return () => {
+      unsubTasks();
+      unsubGoals();
+    };
   }, [userId]);
 
   // Helper to shift start date
@@ -119,10 +135,49 @@ export const Home: React.FC = () => {
     return list;
   }, [rawTasks, selectedDateStr]);
 
+  // Create new task with instant optimistic UI
+  const handleSaveNewTask = async (taskData: {
+    title: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    durationMinutes?: number;
+    priority: any;
+    goalId?: string;
+    notes?: string;
+  }) => {
+    const newTask: Task = {
+      id: 'task_' + Date.now(),
+      userId,
+      title: taskData.title,
+      date: taskData.date,
+      startTime: taskData.startTime,
+      endTime: taskData.endTime,
+      durationMinutes: taskData.durationMinutes,
+      priority: taskData.priority,
+      status: 'planned',
+      goalId: taskData.goalId,
+      notes: taskData.notes,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    // Optimistic local update
+    setRawTasks((prev) => [newTask, ...prev]);
+
+    // Persist to Firestore / local storage
+    await createTask(userId, newTask);
+  };
+
   // Toggle task completion
   const handleToggleComplete = async (task: Task) => {
     const realId = task.id.includes('_rec_') ? task.id.split('_rec_')[0] : task.id;
     const nextStatus = task.status === 'completed' ? 'planned' : 'completed';
+
+    // Optimistic local update
+    setRawTasks((prev) =>
+      prev.map((t) => (t.id === realId ? { ...t, status: nextStatus } : t))
+    );
 
     await updateTask(userId, realId, {
       status: nextStatus,
@@ -133,7 +188,18 @@ export const Home: React.FC = () => {
   // Delete task
   const handleDeleteTask = async (taskId: string) => {
     const realId = taskId.includes('_rec_') ? taskId.split('_rec_')[0] : taskId;
+
+    // Optimistic local update
+    setRawTasks((prev) => prev.filter((t) => t.id !== realId));
+
     await deleteTask(userId, realId);
+  };
+
+  // Trigger quick add from top bar
+  const handleTopBarAddTask = () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isTodayVisible = visibleDates.some((d) => d.toISOString().split('T')[0] === todayStr);
+    setActiveAddingDate(isTodayVisible ? todayStr : startIsoStr);
   };
 
   // Date range title for header
@@ -217,6 +283,7 @@ export const Home: React.FC = () => {
 
           {/* Quick Add Task affordance */}
           <Button
+            onClick={handleTopBarAddTask}
             variant="primary"
             size="sm"
             className="gap-1.5 text-xs bg-red-main hover:bg-red-hover text-white cursor-pointer"
@@ -261,6 +328,10 @@ export const Home: React.FC = () => {
                 date={date}
                 isToday={isToday(date)}
                 tasks={tasksForDay}
+                goals={goals}
+                isAddingExternal={activeAddingDate === dStr}
+                onCloseAddingExternal={() => setActiveAddingDate(null)}
+                onSaveNewTask={handleSaveNewTask}
                 onToggleComplete={handleToggleComplete}
                 onDeleteTask={handleDeleteTask}
                 onSelectTask={(task) => {
