@@ -1,3 +1,7 @@
+/**
+ * @deprecated Legacy field from old Personal/Professional split.
+ * In the unified Home workspace, tasks and goals are unified into one plan.
+ */
 export type SpaceType = 'personal' | 'professional';
 
 export type Priority = 'low' | 'medium' | 'high' | 'critical';
@@ -33,6 +37,7 @@ export interface UserProfile {
 export interface Goal {
   id: string;
   userId: string;
+  /** @deprecated Optional legacy field. New goals do not require or write a space tag. */
   space?: SpaceType;
   title: string;
   description?: string;
@@ -47,6 +52,7 @@ export interface Goal {
 export interface Task {
   id: string;
   userId: string;
+  /** @deprecated Optional legacy field. New tasks do not require or write a space tag. */
   space?: SpaceType;
   goalId?: string;
   title: string;

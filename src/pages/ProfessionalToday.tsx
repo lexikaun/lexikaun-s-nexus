@@ -42,8 +42,7 @@ export const ProfessionalToday: React.FC = () => {
 
   useEffect(() => {
     const unsubTasks = subscribeToTasks(userId, (loadedTasks) => {
-      const profTasks = loadedTasks.filter((t) => t.space === 'professional' || (!t.space && t.associatedBeatId));
-      setRawTasks(profTasks);
+      setRawTasks(loadedTasks);
     });
 
     const unsubGoals = subscribeToGoals(userId, (loadedGoals) => {
@@ -89,7 +88,6 @@ export const ProfessionalToday: React.FC = () => {
       const newTask: Task = {
         id: 'task_' + Date.now(),
         userId,
-        space: 'professional',
         title: taskTitle.trim(),
         date: taskDate,
         startTime: taskStartTime,
@@ -160,7 +158,6 @@ export const ProfessionalToday: React.FC = () => {
     const followUpTask: Task = {
       id: 'task_' + Date.now(),
       userId,
-      space: 'professional',
       title: `${rescheduleTask.title} (Remaining Part)`,
       date: rescheduleSuggestion.targetDate,
       startTime: rescheduleSuggestion.suggestedStartTime,

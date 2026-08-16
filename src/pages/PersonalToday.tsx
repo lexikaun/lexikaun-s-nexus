@@ -51,8 +51,7 @@ export const PersonalToday: React.FC = () => {
 
   useEffect(() => {
     const unsubTasks = subscribeToTasks(userId, (loadedTasks) => {
-      const personalOnly = loadedTasks.filter((t) => !t.space || t.space === 'personal');
-      setRawTasks(personalOnly);
+      setRawTasks(loadedTasks);
     });
 
     const unsubHabits = subscribeToHabits(userId, (loadedHabits) => {
@@ -60,8 +59,7 @@ export const PersonalToday: React.FC = () => {
     });
 
     const unsubGoals = subscribeToGoals(userId, (loadedGoals) => {
-      const personalGoals = loadedGoals.filter((g) => !g.space || g.space === 'personal');
-      setGoals(personalGoals);
+      setGoals(loadedGoals);
     });
 
     return () => {
@@ -104,7 +102,6 @@ export const PersonalToday: React.FC = () => {
       const newTask: Task = {
         id: 'task_' + Date.now(),
         userId,
-        space: 'personal',
         title: taskTitle.trim(),
         date: taskDate,
         startTime: taskStartTime,
@@ -175,7 +172,6 @@ export const PersonalToday: React.FC = () => {
     const followUpTask: Task = {
       id: 'task_' + Date.now(),
       userId,
-      space: 'personal',
       title: `${rescheduleTask.title} (Remaining Part)`,
       date: rescheduleSuggestion.targetDate,
       startTime: rescheduleSuggestion.suggestedStartTime,

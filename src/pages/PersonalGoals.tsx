@@ -30,8 +30,7 @@ export const PersonalGoals: React.FC = () => {
 
   useEffect(() => {
     const unsub = subscribeToGoals(userId, (loadedGoals) => {
-      const personalGoals = loadedGoals.filter((g) => !g.space || g.space === 'personal');
-      setGoals(personalGoals);
+      setGoals(loadedGoals);
     });
     return () => unsub();
   }, [userId]);
@@ -53,7 +52,6 @@ export const PersonalGoals: React.FC = () => {
       const newGoal: Goal = {
         id: 'goal_' + Date.now(),
         userId,
-        space: 'personal',
         title: title.trim(),
         description: description.trim() || undefined,
         deadline: deadline || undefined,

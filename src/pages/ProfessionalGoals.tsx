@@ -32,8 +32,7 @@ export const ProfessionalGoals: React.FC = () => {
 
   useEffect(() => {
     const unsubGoals = subscribeToGoals(userId, (loadedGoals) => {
-      const profGoals = loadedGoals.filter((g) => g.space === 'professional' || !g.space);
-      setGoals(profGoals);
+      setGoals(loadedGoals);
     });
 
     const unsubTasks = subscribeToTasks(userId, (loadedTasks) => {
@@ -63,7 +62,6 @@ export const ProfessionalGoals: React.FC = () => {
       const newGoal: Goal = {
         id: 'goal_' + Date.now(),
         userId,
-        space: 'professional',
         title: title.trim(),
         description: description.trim() || undefined,
         deadline: deadline || undefined,

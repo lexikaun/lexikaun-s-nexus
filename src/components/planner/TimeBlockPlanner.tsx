@@ -27,14 +27,14 @@ import { generateSmartRescheduleSuggestion } from '../../utils/smartReschedule';
 import { Task, Goal, Priority, SpaceType, RecurrenceType, SmartRescheduleSuggestion } from '../../types';
 
 interface TimeBlockPlannerProps {
-  space: SpaceType;
+  space?: SpaceType;
   title: string;
   subtitle: string;
 }
 
 const HOURS = Array.from({ length: 16 }, (_, i) => i + 7); // 07:00 to 22:00
 
-export const TimeBlockPlanner: React.FC<TimeBlockPlannerProps> = ({ space, title, subtitle }) => {
+export const TimeBlockPlanner: React.FC<TimeBlockPlannerProps> = ({ title, subtitle }) => {
   const { user } = useAuth();
   const userId = user?.uid || 'local-producer-01';
 
@@ -63,20 +63,18 @@ export const TimeBlockPlanner: React.FC<TimeBlockPlannerProps> = ({ space, title
 
   useEffect(() => {
     const unsubTasks = subscribeToTasks(userId, (loadedTasks) => {
-      const filtered = loadedTasks.filter((t) => !t.space || t.space === space);
-      setRawTasks(filtered);
+      setRawTasks(loadedTasks);
     });
 
     const unsubGoals = subscribeToGoals(userId, (loadedGoals) => {
-      const filtered = loadedGoals.filter((g) => !g.space || g.space === space);
-      setGoals(filtered);
+      setGoals(loadedGoals);
     });
 
     return () => {
       unsubTasks();
       unsubGoals();
     };
-  }, [userId, space]);
+  }, [userId]);
 
   const handleDateShift = (days: number) => {
     const current = new Date(selectedDate);
@@ -168,7 +166,6 @@ export const TimeBlockPlanner: React.FC<TimeBlockPlannerProps> = ({ space, title
       const newTask: Task = {
         id: 'task_' + Date.now(),
         userId,
-        space,
         title: formTitle.trim(),
         date: formDate,
         startTime: formStartTime,
@@ -229,7 +226,6 @@ export const TimeBlockPlanner: React.FC<TimeBlockPlannerProps> = ({ space, title
     const followUpTask: Task = {
       id: 'task_' + Date.now(),
       userId,
-      space,
       title: `${rescheduleTask.title} (Remaining Part)`,
       date: rescheduleSuggestion.targetDate,
       startTime: rescheduleSuggestion.suggestedStartTime,
