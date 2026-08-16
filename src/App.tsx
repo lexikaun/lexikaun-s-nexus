@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { PlannerProvider, usePlanner } from './context/PlannerContext';
 import { MusicProvider, useMusic } from './context/MusicContext';
+import { HabitProvider } from './context/HabitContext';
 
-import { Header } from './components/common/Header';
-import { TodayOverview } from './components/dashboard/TodayOverview';
-import { TimeBlockingTimeline } from './components/dashboard/TimeBlockingTimeline';
-import { TasksList } from './components/dashboard/TasksList';
-import { GoalsList } from './components/dashboard/GoalsList';
+import { Sidebar, TabValue } from './components/common/Sidebar';
+import { Dashboard } from './components/dashboard/Dashboard';
+import { Planner } from './components/planner/Planner';
+import { GoalsPage } from './components/goals/GoalsPage';
+import { HabitsPage } from './components/habits/HabitsPage';
 import { QuickAddTaskModal } from './components/dashboard/QuickAddTaskModal';
 import { QuickAddGoalModal } from './components/dashboard/QuickAddGoalModal';
 import { SmartRescheduleModal } from './components/dashboard/SmartRescheduleModal';
@@ -21,15 +23,18 @@ import { CreatePlaylistModal } from './components/music/CreatePlaylistModal';
 import { AddToPlaylistModal } from './components/music/AddToPlaylistModal';
 import { StudioSessionView } from './components/music/StudioSessionView';
 
+import { LexikaunAssistant } from './components/ai/LexikaunAssistant';
+
 import { PersistentAudioPlayer } from './components/common/PersistentAudioPlayer';
-import { GlobalSearchModal } from './components/common/GlobalSearchModal';
+import { GlobalCommandBar } from './components/common/GlobalCommandBar';
 import { AuthModal } from './components/common/AuthModal';
 import { SettingsModal } from './components/common/SettingsModal';
 
 import { Task, Goal, Beat } from './types';
 
 function MainAppContent() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'music' | 'studio'>('dashboard');
+  const [activeTab, setActiveTab] = useState<TabValue>('dashboard');
+  const [isAiOpen, setIsAiOpen] = useState(false);
 
   // Modals state
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
@@ -68,47 +73,40 @@ function MainAppContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0C10] text-slate-100 selection:bg-emerald-500 selection:text-black">
-      {/* Top Main Navigation Header */}
-      <Header
-        activeTab={activeTab}
-        onTabChange={(tab) => setActiveTab(tab as any)}
+    <div className="flex min-h-screen bg-main text-primary selection:bg-emerald-500 selection:text-black font-sans">
+      {/* Sidebar for Desktop */}
+      <Sidebar
+        currentTab={activeTab}
+        setCurrentTab={setActiveTab}
         onOpenSearch={() => setIsSearchOpen(true)}
         onOpenAuth={() => setIsAuthOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenAi={() => setIsAiOpen(true)}
       />
 
       {/* Main App Body */}
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 pb-32">
-        {activeTab === 'dashboard' && (
-          <div className="space-y-6">
-            {/* Top Overview Bar */}
-            <TodayOverview
-              onOpenAddTask={() => {
-                setEditingTask(null);
-                setIsAddTaskOpen(true);
-              }}
-              onOpenAddGoal={() => {
-                setEditingGoal(null);
-                setIsAddGoalOpen(true);
-              }}
-              onOpenDailyReview={() => setIsDailyReviewOpen(true)}
-              onOpenReschedule={() => setIsRescheduleOpen(true)}
-            />
+      <div className="flex-1 md:ml-64">
+        <main className="mx-auto max-w-7xl px-4 py-8 sm:px-8 lg:px-12 pb-32">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {activeTab === 'dashboard' && (
+                <Dashboard
+                  onOpenAddTask={() => {
+                    setEditingTask(null);
+                    setIsAddTaskOpen(true);
+                  }}
+                  onOpenReschedule={() => setIsRescheduleOpen(true)}
+                />
+              )}
 
-            {/* Visual Time-Blocking Timeline */}
-            <TimeBlockingTimeline
-              onOpenAddTask={() => {
-                setEditingTask(null);
-                setIsAddTaskOpen(true);
-              }}
-              onSelectTask={handleEditTask}
-            />
-
-            {/* Split Grid: Today's Tasks vs Daily Goals */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-              <div className="lg:col-span-7">
-                <TasksList
+              {activeTab === 'planner' && (
+                <Planner
                   onOpenAddTask={() => {
                     setEditingTask(null);
                     setIsAddTaskOpen(true);
@@ -116,35 +114,38 @@ function MainAppContent() {
                   onEditTask={handleEditTask}
                   onOpenBeatDetail={handleOpenBeatDetailById}
                 />
-              </div>
+              )}
 
-              <div className="lg:col-span-5">
-                <GoalsList
+              {activeTab === 'goals' && (
+                <GoalsPage
                   onOpenAddGoal={() => {
                     setEditingGoal(null);
                     setIsAddGoalOpen(true);
                   }}
                   onEditGoal={handleEditGoal}
                 />
-              </div>
-            </div>
-          </div>
-        )}
+              )}
 
-        {activeTab === 'music' && (
-          <BeatLibrary
-            onSelectBeat={(beat) => setSelectedBeatForDetail(beat)}
-            onOpenUpload={() => setIsUploadBeatOpen(true)}
-            onOpenCreatePlaylist={() => setIsCreatePlaylistOpen(true)}
-            onOpenAddToPlaylist={(beat) => setPlaylistBeatTarget(beat)}
-            onOpenStudioSession={() => setActiveTab('studio')}
-          />
-        )}
+              {activeTab === 'habits' && (
+                <HabitsPage />
+              )}
 
-        {activeTab === 'studio' && (
-          <StudioSessionView onOpenBeatDetail={handleOpenBeatDetailById} />
-        )}
-      </main>
+              {activeTab === 'music' && (
+                <BeatLibrary
+                  onSelectBeat={(beat) => setSelectedBeatForDetail(beat)}
+                  onOpenUpload={() => setIsUploadBeatOpen(true)}
+                  onOpenCreatePlaylist={() => setIsCreatePlaylistOpen(true)}
+                  onOpenAddToPlaylist={(beat) => setPlaylistBeatTarget(beat)}
+                  onOpenStudioSession={() => setActiveTab('studio')}
+                />
+              )}
+
+              {activeTab === 'studio' && (
+                <StudioSessionView onOpenBeatDetail={handleOpenBeatDetailById} />
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </main>
 
       {/* Persistent Audio Player Bar */}
       {currentBeat && (
@@ -209,28 +210,42 @@ function MainAppContent() {
       />
 
       {/* Common Modals */}
-      <GlobalSearchModal
+      <GlobalCommandBar
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
         onSelectTask={(task) => {
-          setActiveTab('dashboard');
+          setActiveTab('planner');
           handleEditTask(task);
         }}
         onSelectGoal={(goal) => {
-          setActiveTab('dashboard');
+          setActiveTab('goals');
           handleEditGoal(goal);
         }}
         onSelectBeat={(beat) => {
+          setActiveTab('music');
           setSelectedBeatForDetail(beat);
+        }}
+        onActionAskLexikaun={() => setIsAiOpen(true)}
+        onActionCreateTask={() => {
+          setEditingTask(null);
+          setIsAddTaskOpen(true);
+        }}
+        onActionCreateGoal={() => {
+          setEditingGoal(null);
+          setIsAddGoalOpen(true);
         }}
       />
 
+      <LexikaunAssistant isOpen={isAiOpen} onClose={() => setIsAiOpen(false)} />
+
+      {/* Auth & Settings */}
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
 
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
       />
+      </div>
     </div>
   );
 }
@@ -241,7 +256,9 @@ export default function App() {
       <ThemeProvider>
         <PlannerProvider>
           <MusicProvider>
-            <MainAppContent />
+            <HabitProvider>
+              <MainAppContent />
+            </HabitProvider>
           </MusicProvider>
         </PlannerProvider>
       </ThemeProvider>

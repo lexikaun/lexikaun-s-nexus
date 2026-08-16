@@ -82,7 +82,7 @@ export const PersistentAudioPlayer: React.FC<PersistentAudioPlayerProps> = ({
   return (
     <div
       id="persistent-audio-player"
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#1E2430] bg-[#0A0C10]/95 px-4 py-2.5 backdrop-blur-2xl shadow-2xl transition-all sm:px-6"
+      className="fixed bottom-0 left-0 right-0 z-50 md:left-64 border-t border-[#27272a] bg-[#09090b]/95 px-4 py-2.5 backdrop-blur-2xl shadow-2xl transition-all sm:px-6"
     >
       {/* Top Thin Progress Scrub Bar */}
       <div

@@ -130,3 +130,24 @@ export interface SmartRescheduleSuggestion {
   targetDate: string;
   reason: string;
 }
+
+export interface Habit {
+  id: string;
+  userId: string;
+  name: string;
+  frequency: string; // e.g. "daily", "weekdays", "weekly"
+  preferredTime?: string; // e.g. "Morning", "Evening", or "07:00"
+  streak: number;
+  notes?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface HabitLog {
+  id: string; // usually habitId_YYYY-MM-DD
+  habitId: string;
+  userId: string;
+  date: string; // YYYY-MM-DD
+  completed: boolean;
+  completedAt?: number;
+}

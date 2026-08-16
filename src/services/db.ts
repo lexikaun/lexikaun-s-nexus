@@ -8,7 +8,7 @@ import {
   getDocFromServer,
 } from 'firebase/firestore';
 import { db, auth } from '../config/firebase';
-import { Goal, Task, Beat, Playlist, MusicSession, DailyReview } from '../types';
+import { Goal, Task, Beat, Playlist, MusicSession, DailyReview, Habit } from '../types';
 import { generateSampleData } from './sampleData';
 
 const LOCAL_STORAGE_KEY_PREFIX = 'lifebeatos_';
@@ -209,6 +209,78 @@ export async function deleteGoalDoc(userId: string, goalId: string): Promise<voi
   const path = `users/${userId}/goals/${goalId}`;
   try {
     await deleteDoc(doc(db, 'users', userId, 'goals', goalId));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, path);
+  }
+}
+
+/**
+ * Realtime Habit subscriptions & operations
+ */
+export function subscribeToHabits(userId: string, callback: (habits: Habit[]) => void): () => void {
+  const localHabits = loadLocal<Habit[]>(`habits_${userId}`, []);
+  callback(localHabits);
+
+  if (!auth.currentUser || auth.currentUser.uid !== userId) {
+    return () => {};
+  }
+
+  const path = `users/${userId}/habits`;
+  try {
+    const habitsRef = collection(db, 'users', userId, 'habits');
+    const unsubscribe = onSnapshot(
+      habitsRef,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const habits = snapshot.docs.map((docSnap) => docSnap.data() as Habit);
+          saveLocal(`habits_${userId}`, habits);
+          callback(habits);
+        } else if (localHabits.length > 0) {
+          callback(localHabits);
+        }
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, path);
+      }
+    );
+    return unsubscribe;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+    return () => {};
+  }
+}
+
+export async function saveHabit(userId: string, habit: Habit): Promise<void> {
+  const current = loadLocal<Habit[]>(`habits_${userId}`, []);
+  const idx = current.findIndex((h) => h.id === habit.id);
+  let updated: Habit[];
+  if (idx >= 0) {
+    updated = [...current];
+    updated[idx] = habit;
+  } else {
+    updated = [habit, ...current];
+  }
+  saveLocal(`habits_${userId}`, updated);
+
+  if (!auth.currentUser || auth.currentUser.uid !== userId) return;
+
+  const path = `users/${userId}/habits/${habit.id}`;
+  try {
+    await setDoc(doc(db, 'users', userId, 'habits', habit.id), sanitizeDoc(habit));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, path);
+  }
+}
+
+export async function deleteHabitDoc(userId: string, habitId: string): Promise<void> {
+  const current = loadLocal<Habit[]>(`habits_${userId}`, []);
+  saveLocal(`habits_${userId}`, current.filter((h) => h.id !== habitId));
+
+  if (!auth.currentUser || auth.currentUser.uid !== userId) return;
+
+  const path = `users/${userId}/habits/${habitId}`;
+  try {
+    await deleteDoc(doc(db, 'users', userId, 'habits', habitId));
   } catch (err) {
     handleFirestoreError(err, OperationType.DELETE, path);
   }
