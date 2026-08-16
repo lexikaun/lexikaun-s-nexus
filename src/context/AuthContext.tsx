@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useEffect, useState } from 'react';
 import {
   User,
   onAuthStateChanged,
@@ -11,9 +11,8 @@ import {
 } from 'firebase/auth';
 import { auth, googleProvider } from '../config/firebase';
 import { UserProfile } from '../types';
-import { initUserData } from '../services/db';
 
-interface AuthContextType {
+export interface AuthContextType {
   user: UserProfile | null;
   firebaseUser: User | null;
   loading: boolean;
@@ -27,38 +26,51 @@ interface AuthContextType {
   resetUserToDefaults: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+const defaultProfile: UserProfile = {
+  uid: 'local-producer-01',
+  email: 'producer@lexikaun.local',
+  displayName: 'Producer',
+  photoURL: null,
+  isAnonymous: false,
+};
+
+export const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<UserProfile | null>(defaultProfile);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      if (fbUser) {
-        const profile: UserProfile = {
-          uid: fbUser.uid,
-          email: fbUser.email,
-          displayName: fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0] : 'Producer'),
-          photoURL: fbUser.photoURL,
-          isAnonymous: fbUser.isAnonymous,
-        };
-        setFirebaseUser(fbUser);
-        setUser(profile);
-        try {
-          await initUserData(fbUser.uid);
-        } catch (e) {
-          console.warn('Error initializing user data:', e);
+    try {
+      const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+        if (fbUser) {
+          const profile: UserProfile = {
+            uid: fbUser.uid,
+            email: fbUser.email,
+            displayName: fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0] : 'Producer'),
+            photoURL: fbUser.photoURL,
+            isAnonymous: fbUser.isAnonymous,
+          };
+          setFirebaseUser(fbUser);
+          setUser(profile);
+        } else {
+          setFirebaseUser(null);
+          setUser(defaultProfile);
         }
-      } else {
-        setFirebaseUser(null);
-        setUser(null);
-      }
-      setLoading(false);
-    });
+        setLoading(false);
+      }, (error) => {
+        console.warn('Firebase auth state warning (using local fallback):', error);
+        setUser(defaultProfile);
+        setLoading(false);
+      });
 
-    return () => unsubscribe();
+      return () => unsubscribe();
+    } catch (err) {
+      console.warn('Firebase auth init error (using local fallback):', err);
+      setUser(defaultProfile);
+      setLoading(false);
+    }
   }, []);
 
   const signInWithGoogle = async () => {
@@ -74,11 +86,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setFirebaseUser(cred.user);
         setUser(profile);
-        await initUserData(cred.user.uid);
       }
     } catch (err) {
       console.error('Google sign in error:', err);
-      throw err;
     }
   };
 
@@ -95,11 +105,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setFirebaseUser(cred.user);
         setUser(profile);
-        await initUserData(cred.user.uid);
       }
     } catch (err) {
       console.error('Email sign in error:', err);
-      throw err;
     }
   };
 
@@ -121,11 +129,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setFirebaseUser(cred.user);
         setUser(profile);
-        await initUserData(cred.user.uid);
       }
     } catch (err) {
       console.error('Sign up error:', err);
-      throw err;
     }
   };
 
@@ -142,25 +148,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setFirebaseUser(cred.user);
         setUser(profile);
-        await initUserData(cred.user.uid);
       }
     } catch (err) {
       console.error('Anonymous sign in error:', err);
-      throw err;
     }
   };
 
   const signOut = async () => {
-    await fbSignOut(auth);
-    setUser(null);
+    try {
+      await fbSignOut(auth);
+    } catch {}
+    setUser(defaultProfile);
     setFirebaseUser(null);
   };
 
   const resetUserToDefaults = async () => {
-    if (user) {
-      localStorage.removeItem(`lifebeatos_seeded_${user.uid}`);
-      await initUserData(user.uid);
-    }
+    setUser(defaultProfile);
   };
 
   return (
@@ -184,10 +187,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+export { useAuth } from './useAuth';

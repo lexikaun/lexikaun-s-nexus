@@ -32,35 +32,52 @@ service cloud.firestore {
     function isValidGoal(data, userId) {
       return data.id is string && isValidId(data.id) &&
         data.userId == userId &&
+        (!('space' in data) || data.space in ['personal', 'professional']) &&
         data.title is string && data.title.size() >= 1 && data.title.size() <= 300 &&
         (!('description' in data) || (data.description is string && data.description.size() <= 3000)) &&
+        (!('deadline' in data) || (data.deadline is string && data.deadline.size() <= 32)) &&
         (!('date' in data) || (data.date is string && data.date.size() <= 32)) &&
         data.priority in ['low', 'medium', 'high', 'critical'] &&
         data.status in ['active', 'completed', 'archived'] &&
-        data.createdAt is number &&
-        data.updatedAt is number;
+        (!('createdAt' in data) || data.createdAt is number) &&
+        (!('updatedAt' in data) || data.updatedAt is number);
     }
 
     function isValidTask(data, userId) {
       return data.id is string && isValidId(data.id) &&
         data.userId == userId &&
+        (!('space' in data) || data.space in ['personal', 'professional']) &&
         (!('goalId' in data) || (data.goalId is string && data.goalId.size() <= 128)) &&
         data.title is string && data.title.size() >= 1 && data.title.size() <= 300 &&
         (!('description' in data) || (data.description is string && data.description.size() <= 3000)) &&
         data.date is string && data.date.size() <= 32 &&
         data.startTime is string && data.startTime.size() <= 16 &&
         data.endTime is string && data.endTime.size() <= 16 &&
-        data.durationMinutes is number &&
+        (!('duration' in data) || data.duration is number) &&
+        (!('durationMinutes' in data) || data.durationMinutes is number) &&
         data.priority in ['low', 'medium', 'high', 'critical'] &&
         data.status in ['planned', 'in_progress', 'completed', 'skipped', 'rescheduled'] &&
         (!('notes' in data) || (data.notes is string && data.notes.size() <= 3000)) &&
-        (!('recurrence' in data) || data.recurrence in ['none', 'daily', 'weekdays', 'weekly']) &&
+        (!('recurrence' in data) || data.recurrence is map || data.recurrence in ['none', 'daily', 'weekdays', 'weekly', 'monthly']) &&
         (!('associatedBeatId' in data) || (data.associatedBeatId is string && data.associatedBeatId.size() <= 128)) &&
         (!('completedAt' in data) || data.completedAt is number) &&
         (!('actualDurationMinutes' in data) || data.actualDurationMinutes is number) &&
-        data.order is number &&
-        data.createdAt is number &&
-        data.updatedAt is number;
+        (!('order' in data) || data.order is number) &&
+        (!('createdAt' in data) || data.createdAt is number) &&
+        (!('updatedAt' in data) || data.updatedAt is number);
+    }
+
+    function isValidHabit(data, userId) {
+      return data.id is string && isValidId(data.id) &&
+        data.userId == userId &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 200 &&
+        data.frequency is string &&
+        (!('preferredTime' in data) || (data.preferredTime is string && data.preferredTime.size() <= 32)) &&
+        (!('completionHistory' in data) || data.completionHistory is map) &&
+        (!('streak' in data) || data.streak is number) &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 3000)) &&
+        (!('createdAt' in data) || data.createdAt is number) &&
+        (!('updatedAt' in data) || data.updatedAt is number);
     }
 
     function isValidBeat(data, userId) {
@@ -139,8 +156,7 @@ service cloud.firestore {
         allow list: if isOwner(userId);
         allow create: if isOwner(userId) && isValidId(goalId) && isValidGoal(incoming(), userId);
         allow update: if isOwner(userId) && isValidId(goalId) && isValidGoal(incoming(), userId) &&
-          incoming().userId == existing().userId &&
-          incoming().createdAt == existing().createdAt;
+          incoming().userId == existing().userId;
         allow delete: if isOwner(userId) && isValidId(goalId);
       }
 
@@ -150,9 +166,18 @@ service cloud.firestore {
         allow list: if isOwner(userId);
         allow create: if isOwner(userId) && isValidId(taskId) && isValidTask(incoming(), userId);
         allow update: if isOwner(userId) && isValidId(taskId) && isValidTask(incoming(), userId) &&
-          incoming().userId == existing().userId &&
-          incoming().createdAt == existing().createdAt;
+          incoming().userId == existing().userId;
         allow delete: if isOwner(userId) && isValidId(taskId);
+      }
+
+      // Habits subcollection
+      match /habits/{habitId} {
+        allow get: if isOwner(userId) && isValidId(habitId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(habitId) && isValidHabit(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(habitId) && isValidHabit(incoming(), userId) &&
+          incoming().userId == existing().userId;
+        allow delete: if isOwner(userId) && isValidId(habitId);
       }
 
       // Beats subcollection

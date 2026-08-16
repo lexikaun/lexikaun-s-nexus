@@ -1,3 +1,5 @@
+export type SpaceType = 'personal' | 'professional';
+
 export type Priority = 'low' | 'medium' | 'high' | 'critical';
 
 export type GoalStatus = 'active' | 'completed' | 'archived';
@@ -6,7 +8,18 @@ export type TaskStatus = 'planned' | 'in_progress' | 'completed' | 'skipped' | '
 
 export type BeatStatus = 'wip' | 'finished' | 'released' | 'archived';
 
-export type RecurrenceType = 'none' | 'daily' | 'weekdays' | 'weekly';
+export type RecurrenceType = 'none' | 'daily' | 'weekdays' | 'weekly' | 'monthly';
+
+export interface RecurrenceRule {
+  freq: 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'custom';
+  days?: number[]; // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  until?: string; // YYYY-MM-DD
+}
+
+export interface UserPreferences {
+  theme?: 'option-e';
+  soundEnabled?: boolean;
+}
 
 export interface UserProfile {
   uid: string;
@@ -14,57 +27,77 @@ export interface UserProfile {
   displayName: string | null;
   photoURL: string | null;
   isAnonymous?: boolean;
+  preferences?: UserPreferences;
 }
 
 export interface Goal {
   id: string;
   userId: string;
+  space?: SpaceType;
   title: string;
   description?: string;
-  date: string; // YYYY-MM-DD
+  deadline?: string; // YYYY-MM-DD
+  date?: string; // Legacy compatibility
   priority: Priority;
   status: GoalStatus;
-  createdAt: number;
-  updatedAt: number;
+  createdAt?: number;
+  updatedAt?: number;
 }
 
 export interface Task {
   id: string;
   userId: string;
-  goalId?: string; // parent goal
+  space?: SpaceType;
+  goalId?: string;
   title: string;
   description?: string;
   date: string; // YYYY-MM-DD
   startTime: string; // HH:mm (24h)
   endTime: string; // HH:mm (24h)
-  durationMinutes: number;
+  duration?: number; // duration in minutes
+  durationMinutes?: number; // Legacy compatibility
   priority: Priority;
   status: TaskStatus;
+  associatedBeatId?: string; // Links task directly to a self-produced beat
+  recurrence?: RecurrenceRule | RecurrenceType;
   notes?: string;
-  recurrence?: RecurrenceType;
-  associatedBeatId?: string; // Links task directly to a beat
   completedAt?: number;
   actualDurationMinutes?: number;
-  order: number;
-  createdAt: number;
-  updatedAt: number;
+  order?: number;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+export interface Habit {
+  id: string;
+  userId: string;
+  name: string;
+  frequency: string; // e.g. "daily", "weekdays", "weekly"
+  preferredTime?: string; // e.g. "Morning", "Evening", or "07:30"
+  completionHistory?: Record<string, boolean>; // { "YYYY-MM-DD": boolean } direct lookup map
+  streak: number;
+  notes?: string;
+  createdAt?: number;
+  updatedAt?: number;
 }
 
 export interface Beat {
   id: string;
   userId: string;
   title: string;
-  audioUrl: string;
-  audioBlobId?: string; // indexedDB fallback key for offline uploaded audio
-  duration: number; // in seconds
-  bpm: number;
-  key: string;
+  storagePath?: string; // users/{uid}/beats/{beatId}/{filename}
+  audioUrl?: string; // signed URL or playback URL
+  audioBlobId?: string; // indexedDB fallback key
+  bpm: number; // strictly user-entered
+  key: string; // strictly user-entered
   genre: string;
   tags: string[];
   status: BeatStatus;
   notes?: string;
+  artworkPath?: string;
   coverUrl?: string;
-  color?: string; // aesthetic gradient color or accent
+  duration?: number; // seconds
+  color?: string;
   isFavorite?: boolean;
   fileFormat?: string;
   fileSize?: number;
@@ -88,32 +121,39 @@ export interface MusicSession {
   beatTitle?: string;
   startTime: number;
   endTime?: number;
-  durationSeconds: number;
-  notes: string;
-  createdAt: number;
+  duration?: number;
+  durationSeconds?: number;
+  notes?: string;
+  createdAt?: number;
 }
 
 export interface DailyReview {
   id: string;
   userId: string;
   date: string; // YYYY-MM-DD
-  goalsCompleted: number;
-  totalGoals: number;
-  tasksCompleted: number;
-  tasksMissed: number;
-  tasksRescheduled: number;
-  totalPlannedMinutes: number;
-  totalCompletedMinutes: number;
-  completionRate: number;
-  whatWentWell: string;
-  whatToImprove: string;
-  moodRating?: number; // 1-5
-  createdAt: number;
+  completedGoals?: number;
+  goalsCompleted?: number;
+  totalGoals?: number;
+  completedTasks?: number;
+  tasksCompleted?: number;
+  tasksMissed?: number;
+  tasksRescheduled?: number;
+  skippedTasks?: number;
+  plannedTime?: number; // in minutes
+  totalPlannedMinutes?: number;
+  completedTime?: number; // in minutes
+  totalCompletedMinutes?: number;
+  completionRate?: number;
+  whatWentWell?: string;
+  whatToImprove?: string;
+  moodRating?: number;
+  reflection?: string;
+  createdAt?: number;
 }
 
 export interface TimeBlockSlot {
-  start: string; // HH:mm
-  end: string;   // HH:mm
+  start: string;
+  end: string;
   startMinutes: number;
   endMinutes: number;
   task?: Task;
@@ -129,25 +169,4 @@ export interface SmartRescheduleSuggestion {
   suggestedEndTime: string;
   targetDate: string;
   reason: string;
-}
-
-export interface Habit {
-  id: string;
-  userId: string;
-  name: string;
-  frequency: string; // e.g. "daily", "weekdays", "weekly"
-  preferredTime?: string; // e.g. "Morning", "Evening", or "07:00"
-  streak: number;
-  notes?: string;
-  createdAt: number;
-  updatedAt: number;
-}
-
-export interface HabitLog {
-  id: string; // usually habitId_YYYY-MM-DD
-  habitId: string;
-  userId: string;
-  date: string; // YYYY-MM-DD
-  completed: boolean;
-  completedAt?: number;
 }
