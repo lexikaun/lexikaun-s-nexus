@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Task, Goal, Channel } from '../../types';
-import { QuickAddTask } from './QuickAddTask';
 import { TaskCard } from './TaskCard';
+import { AddTaskWindow } from '../tasks/AddTaskWindow';
 
 export interface DayColumnProps {
   date: Date;
@@ -49,7 +49,7 @@ export const DayColumn: React.FC<DayColumnProps> = ({
   onCreateGoal,
   onCreateChannel,
 }) => {
-  const [isAddingInline, setIsAddingInline] = useState(false);
+  const [isAddWindowOpen, setIsAddWindowOpen] = useState(false);
 
   const dateStr = date.toISOString().split('T')[0];
   const fullDayName = date.toLocaleDateString('en-US', { weekday: 'long' });
@@ -66,21 +66,23 @@ export const DayColumn: React.FC<DayColumnProps> = ({
     return (a.createdAt || 0) - (b.createdAt || 0);
   });
 
-  // Progress calculation
+  // Honest Progress calculation
   const totalTasks = tasks.length;
-  const completedTasks = tasks.filter((t) => t.status === 'completed').length;
+  const completedTasks = tasks.filter(
+    (t) => t.status === 'completed' || t.done === true
+  ).length;
   const progressPercent =
     totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-  const showQuickAdd = isAddingInline || isAddingExternal;
+  const showAddWindow = isAddWindowOpen || isAddingExternal;
 
   const handleOpenAdd = () => {
-    setIsAddingInline(true);
+    setIsAddWindowOpen(true);
     onAddTask?.(dateStr);
   };
 
   const handleCloseAdd = () => {
-    setIsAddingInline(false);
+    setIsAddWindowOpen(false);
     onCloseAddingExternal?.();
   };
 
@@ -92,62 +94,47 @@ export const DayColumn: React.FC<DayColumnProps> = ({
 
   return (
     <div
-      className={`flex-1 min-w-[280px] max-w-[420px] flex flex-col h-full border-r border-border-main/40 select-none ${
-        isToday ? 'bg-surface/10' : 'bg-bg-main'
+      className={`flex-1 min-w-[280px] max-w-[420px] flex flex-col h-full border-r border-hairline select-none ${
+        isToday ? 'bg-surface/[0.08]' : 'bg-canvas'
       }`}
     >
-      {/* 1. Calm Column Header */}
-      <div className="px-4 pt-3.5 pb-2 shrink-0 bg-bg-main space-y-1">
+      {/* 1. Calm Column Header & Real Progress Bar */}
+      <div className="px-4 pt-4 pb-2.5 shrink-0 bg-canvas space-y-1.5 border-b border-hairline/40">
         <div className="flex items-baseline justify-between">
           <div>
             <div
-              className={`text-sm font-medium ${
-                isToday ? 'text-red-main font-semibold' : 'text-text-main'
+              className={`font-display text-base tracking-tight ${
+                isToday ? 'text-accent font-medium' : 'text-ink font-normal'
               }`}
             >
               {fullDayName}
             </div>
-            <div className="text-xs text-text-secondary">
+            <div className="font-mono text-[11px] text-ink-muted tracking-tight">
               {monthName} {dayNumber}
             </div>
           </div>
         </div>
 
-        {/* Thin 2px progress bar directly below the date header */}
-        <div className="w-full h-[2px] bg-surface rounded-full overflow-hidden mt-1.5">
+        {/* Thin 2px accent progress line */}
+        <div className="w-full h-[2px] bg-surface-hover rounded-full overflow-hidden mt-2">
           <div
-            className={`h-full rounded-full transition-all duration-300 ${
-              progressPercent === 100 ? 'bg-emerald-500' : 'bg-red-main'
-            }`}
+            className="h-full rounded-full bg-accent transition-all duration-300 ease-out"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
       </div>
 
       {/* 2. Unified Day Column Stream */}
-      <div className="flex-1 overflow-y-auto px-3.5 py-2 space-y-2">
-        {/* + Add Task trigger / Inline Quick Add directly below header */}
-        {showQuickAdd ? (
-          <div className="mb-2">
-            <QuickAddTask
-              dateStr={dateStr}
-              goals={goals}
-              channels={channels}
-              onCreateGoal={onCreateGoal}
-              onCreateChannel={onCreateChannel}
-              onSave={handleSave}
-              onCancel={handleCloseAdd}
-            />
-          </div>
-        ) : (
-          <button
-            onClick={handleOpenAdd}
-            className="w-full flex items-center gap-2 py-1.5 px-2.5 rounded-lg border border-transparent hover:border-border-main/50 hover:bg-surface/50 text-xs text-text-secondary/70 hover:text-text-main transition-all cursor-pointer group text-left"
-          >
-            <Plus className="w-3.5 h-3.5 text-text-secondary group-hover:text-red-main transition-colors shrink-0" />
-            <span>Add task</span>
-          </button>
-        )}
+      <div className="flex-1 overflow-y-auto px-3.5 py-3 space-y-2.5">
+        {/* + Add Task trigger at top of the column */}
+        <button
+          type="button"
+          onClick={handleOpenAdd}
+          className="w-full flex items-center gap-2 py-2 px-3 rounded-[10px] border border-hairline/60 hover:border-hairline hover:bg-surface/80 text-xs text-ink-muted hover:text-ink transition-all duration-150 cursor-pointer group text-left shadow-sm"
+        >
+          <Plus className="w-3.5 h-3.5 text-ink-muted group-hover:text-accent transition-colors shrink-0" />
+          <span className="font-sans">Add task</span>
+        </button>
 
         {/* Single continuous list of task cards */}
         {sortedTasks.map((task) => (
@@ -166,7 +153,27 @@ export const DayColumn: React.FC<DayColumnProps> = ({
             }
           />
         ))}
+
+        {sortedTasks.length === 0 && (
+          <div className="py-8 text-center text-ink-muted/50 text-xs font-mono">
+            No tasks scheduled
+          </div>
+        )}
       </div>
+
+      {/* Floating Notecard Add Task Window (Phase 1) */}
+      {showAddWindow && (
+        <AddTaskWindow
+          isOpen={showAddWindow}
+          dateStr={dateStr}
+          goals={goals}
+          channels={channels}
+          onCreateGoal={onCreateGoal}
+          onCreateChannel={onCreateChannel}
+          onSave={handleSave}
+          onClose={handleCloseAdd}
+        />
+      )}
     </div>
   );
 };
