@@ -7,11 +7,14 @@ import {
   Calendar,
   Clock,
   ArrowRight,
+  Target,
+  FileText,
 } from 'lucide-react';
-import { Task } from '../../types';
+import { Task, Goal } from '../../types';
 
 export interface TaskCardProps {
   task: Task;
+  goals?: Goal[];
   onToggleComplete: (task: Task) => void;
   onClick: (task: Task) => void;
   onDelete?: (taskId: string) => void;
@@ -37,6 +40,7 @@ function formatDuration(mins: number): string {
 
 export const TaskCard: React.FC<TaskCardProps> = ({
   task,
+  goals = [],
   onToggleComplete,
   onClick,
   onDelete,
@@ -45,6 +49,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   const isDone = task.status === 'completed';
   const isScheduled = Boolean(task.startTime && task.startTime.trim() !== '');
   const duration = calculateMinutes(task.startTime, task.endTime, task.duration || task.durationMinutes);
+
+  const linkedGoal = task.goalId ? goals.find((g) => g.id === task.goalId) : undefined;
 
   return (
     <div
@@ -111,7 +117,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         </div>
       </div>
 
-      {/* Bottom Row: Minimal details (time, duration, recurrence, beat) */}
+      {/* Bottom Row: Minimal details (time, duration, goal link, recurrence, beat) */}
       <div className="flex items-center gap-1.5 text-[11px] font-mono text-text-secondary pl-6 flex-wrap">
         {isScheduled ? (
           <>
@@ -127,6 +133,23 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           </>
         ) : (
           <span className="text-text-secondary/60 text-[10px]">Unscheduled</span>
+        )}
+
+        {/* Linked Goal Tag */}
+        {linkedGoal && (
+          <span
+            className="inline-flex items-center gap-1 text-[10px] text-text-secondary bg-surface hairline-border px-1.5 py-0.2 rounded"
+            title={`Goal: ${linkedGoal.title}`}
+          >
+            <Target className="w-2.5 h-2.5 text-red-main shrink-0" />
+            <span className="truncate max-w-[80px]">{linkedGoal.title}</span>
+          </span>
+        )}
+
+        {task.notes && (
+          <span title="Contains notes" className="text-text-secondary/60">
+            <FileText className="w-2.5 h-2.5" />
+          </span>
         )}
 
         {task.recurrence && task.recurrence !== 'none' && (

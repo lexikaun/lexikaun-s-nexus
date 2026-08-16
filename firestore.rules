@@ -47,9 +47,9 @@ service cloud.firestore {
       return data.id is string && isValidId(data.id) &&
         data.userId == userId &&
         (!('space' in data) || data.space in ['personal', 'professional']) &&
-        (!('goalId' in data) || (data.goalId is string && data.goalId.size() <= 128)) &&
+        (!('goalId' in data) || data.goalId == null || (data.goalId is string && data.goalId.size() <= 128)) &&
         data.title is string && data.title.size() >= 1 && data.title.size() <= 300 &&
-        (!('description' in data) || (data.description is string && data.description.size() <= 3000)) &&
+        (!('description' in data) || data.description == null || (data.description is string && data.description.size() <= 3000)) &&
         data.date is string && data.date.size() <= 32 &&
         data.startTime is string && data.startTime.size() <= 16 &&
         data.endTime is string && data.endTime.size() <= 16 &&
@@ -57,12 +57,11 @@ service cloud.firestore {
         (!('durationMinutes' in data) || data.durationMinutes is number) &&
         data.priority in ['low', 'medium', 'high', 'critical'] &&
         data.status in ['planned', 'in_progress', 'completed', 'skipped', 'rescheduled'] &&
-        (!('notes' in data) || (data.notes is string && data.notes.size() <= 3000)) &&
-        (!('recurrence' in data) || data.recurrence is map || data.recurrence in ['none', 'daily', 'weekdays', 'weekly', 'monthly']) &&
-        (!('associatedBeatId' in data) || (data.associatedBeatId is string && data.associatedBeatId.size() <= 128)) &&
+        (!('notes' in data) || data.notes == null || (data.notes is string && data.notes.size() <= 3000)) &&
+        (!('recurrence' in data) || data.recurrence is map || data.recurrence in ['none', 'daily', 'weekdays', 'weekly', 'custom', 'monthly']) &&
+        (!('recurrenceRule' in data) || data.recurrenceRule == null || (data.recurrenceRule is string && data.recurrenceRule.size() <= 200)) &&
+        (!('associatedBeatId' in data) || data.associatedBeatId == null || (data.associatedBeatId is string && data.associatedBeatId.size() <= 128)) &&
         (!('completedAt' in data) || data.completedAt is number) &&
-        (!('actualDurationMinutes' in data) || data.actualDurationMinutes is number) &&
-        (!('order' in data) || data.order is number) &&
         (!('createdAt' in data) || data.createdAt is number) &&
         (!('updatedAt' in data) || data.updatedAt is number);
     }

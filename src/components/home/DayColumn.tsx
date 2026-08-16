@@ -30,6 +30,7 @@ export interface DayColumnProps {
   onDeleteTask?: (taskId: string) => void;
   onSelectTask?: (task: Task) => void;
   onQuickRescheduleTomorrow?: (task: Task) => void;
+  onCreateGoal?: (title: string) => Promise<string>;
 }
 
 function calculateMinutes(startTime?: string, endTime?: string, duration?: number): number {
@@ -62,6 +63,7 @@ export const DayColumn: React.FC<DayColumnProps> = ({
   onDeleteTask,
   onSelectTask,
   onQuickRescheduleTomorrow,
+  onCreateGoal,
 }) => {
   const [isAddingInline, setIsAddingInline] = useState(false);
 
@@ -175,6 +177,7 @@ export const DayColumn: React.FC<DayColumnProps> = ({
             <QuickAddTask
               dateStr={dateStr}
               goals={goals}
+              onCreateGoal={onCreateGoal}
               onSave={handleSave}
               onCancel={handleCloseAdd}
             />
@@ -206,6 +209,7 @@ export const DayColumn: React.FC<DayColumnProps> = ({
                 <TaskCard
                   key={task.id}
                   task={task}
+                  goals={goals}
                   onClick={(t) => onSelectTask?.(t)}
                   onToggleComplete={(t) => onToggleComplete?.(t)}
                   onDelete={(id) => onDeleteTask?.(id)}
@@ -245,6 +249,7 @@ export const DayColumn: React.FC<DayColumnProps> = ({
                 <TaskCard
                   key={task.id}
                   task={task}
+                  goals={goals}
                   onClick={(t) => onSelectTask?.(t)}
                   onToggleComplete={(t) => onToggleComplete?.(t)}
                   onDelete={(id) => onDeleteTask?.(id)}

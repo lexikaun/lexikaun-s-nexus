@@ -17,6 +17,7 @@ import {
   updateTask,
   deleteTask,
   createTask,
+  createGoal,
 } from '../services/db';
 import { expandRecurringTask } from '../utils/recurrence';
 import { Task, Goal } from '../types';
@@ -171,6 +172,22 @@ export const Home: React.FC = () => {
 
     // Persist to Firestore / local storage
     await createTask(userId, newTask);
+  };
+
+  // Create new goal inline from QuickAdd / Schedule modal
+  const handleCreateGoal = async (title: string): Promise<string> => {
+    const newGoal: Goal = {
+      id: 'goal_' + Date.now(),
+      userId,
+      title,
+      priority: 'medium',
+      status: 'active',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    setGoals((prev) => [...prev, newGoal]);
+    await createGoal(userId, newGoal);
+    return newGoal.id;
   };
 
   // Update existing task from Schedule/Detail modal
@@ -377,6 +394,7 @@ export const Home: React.FC = () => {
                 isAddingExternal={activeAddingDate === dStr}
                 onCloseAddingExternal={() => setActiveAddingDate(null)}
                 onSaveNewTask={handleSaveNewTask}
+                onCreateGoal={handleCreateGoal}
                 onToggleComplete={handleToggleComplete}
                 onDeleteTask={handleDeleteTask}
                 onSelectTask={(task) => {
@@ -414,6 +432,7 @@ export const Home: React.FC = () => {
         <TaskScheduleModal
           task={selectedTaskForEdit}
           goals={goals}
+          onCreateGoal={handleCreateGoal}
           onClose={() => setSelectedTaskForEdit(null)}
           onSave={handleSaveTaskModal}
           onDelete={handleDeleteTask}

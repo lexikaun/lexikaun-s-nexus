@@ -10,11 +10,9 @@ import {
   Trash2,
   ChevronRight,
   RotateCw,
-  FastForward,
-  Sparkles,
+  Plus,
 } from 'lucide-react';
 import { Task, Goal, Priority } from '../../types';
-import { generateSmartRescheduleSuggestion } from '../../utils/smartReschedule';
 
 export interface TaskScheduleModalProps {
   task: Task | null;
@@ -22,6 +20,7 @@ export interface TaskScheduleModalProps {
   onClose: () => void;
   onSave: (updatedTask: Task) => Promise<void> | void;
   onDelete: (taskId: string) => Promise<void> | void;
+  onCreateGoal?: (title: string) => Promise<string>;
 }
 
 export const TaskScheduleModal: React.FC<TaskScheduleModalProps> = ({
@@ -30,6 +29,7 @@ export const TaskScheduleModal: React.FC<TaskScheduleModalProps> = ({
   onClose,
   onSave,
   onDelete,
+  onCreateGoal,
 }) => {
   if (!task) return null;
 
@@ -41,6 +41,8 @@ export const TaskScheduleModal: React.FC<TaskScheduleModalProps> = ({
   const [priority, setPriority] = useState<Priority>(task.priority || 'medium');
   const [goalId, setGoalId] = useState<string>(task.goalId || '');
   const [notes, setNotes] = useState(task.notes || '');
+  const [isCreatingGoal, setIsCreatingGoal] = useState(false);
+  const [newGoalTitle, setNewGoalTitle] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   // Quick date shift helpers
@@ -76,6 +78,14 @@ export const TaskScheduleModal: React.FC<TaskScheduleModalProps> = ({
     setEndTime(`${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`);
   };
 
+  const handleCreateNewGoalSubmit = async () => {
+    if (!newGoalTitle.trim() || !onCreateGoal) return;
+    const createdId = await onCreateGoal(newGoalTitle.trim());
+    setGoalId(createdId);
+    setNewGoalTitle('');
+    setIsCreatingGoal(false);
+  };
+
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || isSaving) return;
@@ -99,6 +109,8 @@ export const TaskScheduleModal: React.FC<TaskScheduleModalProps> = ({
       setIsSaving(false);
     }
   };
+
+  const activeGoal = goals.find((g) => g.id === goalId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150 select-none">
@@ -274,7 +286,7 @@ export const TaskScheduleModal: React.FC<TaskScheduleModalProps> = ({
             )}
           </div>
 
-          {/* Priority & Goal Row */}
+          {/* Priority & Linked Goal Section */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-[11px] uppercase font-mono tracking-wider text-text-secondary">
@@ -293,24 +305,82 @@ export const TaskScheduleModal: React.FC<TaskScheduleModalProps> = ({
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] uppercase font-mono tracking-wider text-text-secondary flex items-center gap-1">
-                <Target className="w-3 h-3" />
-                Linked Goal
-              </label>
-              <select
-                value={goalId}
-                onChange={(e) => setGoalId(e.target.value)}
-                className="w-full bg-bg-main text-text-main px-2.5 py-2 rounded-lg border border-border-main/50 focus:outline-none cursor-pointer"
-              >
-                <option value="">None (Stand-alone)</option>
-                {goals.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.title}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] uppercase font-mono tracking-wider text-text-secondary flex items-center gap-1">
+                  <Target className="w-3 h-3 text-red-main" />
+                  Linked Goal
+                </label>
+                {onCreateGoal && !isCreatingGoal && (
+                  <button
+                    type="button"
+                    onClick={() => setIsCreatingGoal(true)}
+                    className="text-[10px] text-red-main hover:underline flex items-center gap-0.5 cursor-pointer"
+                  >
+                    <Plus className="w-2.5 h-2.5" />
+                    New
+                  </button>
+                )}
+              </div>
+
+              {isCreatingGoal ? (
+                <div className="flex items-center gap-1">
+                  <input
+                    type="text"
+                    value={newGoalTitle}
+                    onChange={(e) => setNewGoalTitle(e.target.value)}
+                    placeholder="New goal title..."
+                    className="flex-1 bg-bg-main text-text-main text-xs rounded px-2 py-1.5 border border-red-main/50 focus:outline-none"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCreateNewGoalSubmit}
+                    disabled={!newGoalTitle.trim()}
+                    className="px-2 py-1.5 rounded bg-red-main text-white text-xs disabled:opacity-40"
+                  >
+                    Add
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsCreatingGoal(false)}
+                    className="px-1.5 py-1.5 text-text-secondary hover:text-text-main"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <select
+                  value={goalId}
+                  onChange={(e) => setGoalId(e.target.value)}
+                  className="w-full bg-bg-main text-text-main px-2.5 py-2 rounded-lg border border-border-main/50 focus:outline-none cursor-pointer"
+                >
+                  <option value="">None (Stand-alone task)</option>
+                  {goals.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.title}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
+
+          {/* Subtly show active goal badge if linked */}
+          {activeGoal && (
+            <div className="p-2 rounded bg-surface/50 hairline-border flex items-center justify-between text-xs text-text-secondary">
+              <div className="flex items-center gap-1.5 truncate">
+                <Target className="w-3.5 h-3.5 text-red-main shrink-0" />
+                <span className="text-text-main font-medium truncate">{activeGoal.title}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setGoalId('')}
+                className="text-[10px] text-text-secondary hover:text-red-main transition-colors cursor-pointer shrink-0"
+              >
+                Unlink
+              </button>
+            </div>
+          )}
 
           {/* Notes */}
           <div className="space-y-1">

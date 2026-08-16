@@ -5,6 +5,7 @@ import { Priority, Goal, Task } from '../../types';
 export interface QuickAddTaskProps {
   dateStr: string;
   goals?: Goal[];
+  onCreateGoal?: (title: string) => Promise<string>;
   onSave: (taskData: {
     title: string;
     date: string;
@@ -21,6 +22,7 @@ export interface QuickAddTaskProps {
 export const QuickAddTask: React.FC<QuickAddTaskProps> = ({
   dateStr,
   goals = [],
+  onCreateGoal,
   onSave,
   onCancel,
 }) => {
@@ -30,6 +32,8 @@ export const QuickAddTask: React.FC<QuickAddTaskProps> = ({
   const [endTime, setEndTime] = useState('10:00');
   const [priority, setPriority] = useState<Priority>('medium');
   const [goalId, setGoalId] = useState<string>('');
+  const [isCreatingGoal, setIsCreatingGoal] = useState(false);
+  const [newGoalTitle, setNewGoalTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [showDetails, setShowDetails] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,7 +47,7 @@ export const QuickAddTask: React.FC<QuickAddTaskProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       onCancel();
-    } else if (e.key === 'Enter' && !e.shiftKey) {
+    } else if (e.key === 'Enter' && !e.shiftKey && !isCreatingGoal) {
       e.preventDefault();
       handleSubmit();
     }
@@ -55,6 +59,14 @@ export const QuickAddTask: React.FC<QuickAddTaskProps> = ({
     const newH = Math.floor(totalMinutes / 60);
     const newM = totalMinutes % 60;
     setEndTime(`${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`);
+  };
+
+  const handleCreateNewGoalSubmit = async () => {
+    if (!newGoalTitle.trim() || !onCreateGoal) return;
+    const createdId = await onCreateGoal(newGoalTitle.trim());
+    setGoalId(createdId);
+    setNewGoalTitle('');
+    setIsCreatingGoal(false);
   };
 
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -172,13 +184,52 @@ export const QuickAddTask: React.FC<QuickAddTaskProps> = ({
 
         {showDetails && (
           <div className="mt-2 space-y-2 pt-2 border-t border-border-main/30 text-xs">
-            {/* Optional Goal link */}
-            {goals.length > 0 && (
-              <div className="space-y-1">
+            {/* Goal Link with Inline Creation */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
                 <label className="text-[10px] uppercase font-mono text-text-secondary flex items-center gap-1">
-                  <Target className="w-2.5 h-2.5" />
+                  <Target className="w-2.5 h-2.5 text-red-main" />
                   Link to Goal
                 </label>
+                {onCreateGoal && !isCreatingGoal && (
+                  <button
+                    type="button"
+                    onClick={() => setIsCreatingGoal(true)}
+                    className="text-[10px] text-red-main hover:underline flex items-center gap-0.5 cursor-pointer"
+                  >
+                    <Plus className="w-2.5 h-2.5" />
+                    New
+                  </button>
+                )}
+              </div>
+
+              {isCreatingGoal ? (
+                <div className="flex items-center gap-1">
+                  <input
+                    type="text"
+                    value={newGoalTitle}
+                    onChange={(e) => setNewGoalTitle(e.target.value)}
+                    placeholder="Goal title..."
+                    className="flex-1 bg-bg-main/90 text-text-main text-xs rounded px-2 py-1 border border-red-main/50 focus:outline-none"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCreateNewGoalSubmit}
+                    disabled={!newGoalTitle.trim()}
+                    className="px-2 py-1 rounded bg-red-main text-white text-xs disabled:opacity-40"
+                  >
+                    Add
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsCreatingGoal(false)}
+                    className="px-1.5 py-1 text-text-secondary hover:text-text-main"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
                 <select
                   value={goalId}
                   onChange={(e) => setGoalId(e.target.value)}
@@ -191,8 +242,8 @@ export const QuickAddTask: React.FC<QuickAddTaskProps> = ({
                     </option>
                   ))}
                 </select>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Notes */}
             <div className="space-y-1">
