@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Calendar as CalendarIcon, PanelRightClose, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
+import { Calendar as CalendarIcon, PanelRightClose, ChevronLeft, ChevronRight, Clock, Check } from 'lucide-react';
+import { Task } from '../../types';
 
 export interface CalendarPanelProps {
   isOpen: boolean;
   onClose: () => void;
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
+  tasksForDate?: Task[];
 }
 
 const HOURS = Array.from({ length: 15 }, (_, i) => i + 7); // 07:00 to 21:00
@@ -15,6 +17,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({
   onClose,
   selectedDate,
   onSelectDate,
+  tasksForDate = [],
 }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date(selectedDate));
 
@@ -60,6 +63,16 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({
       now.getMonth() === month &&
       now.getDate() === day
     );
+  };
+
+  // Find task matching each hour slot
+  const getTaskForHour = (hour: number) => {
+    const hourStr = String(hour).padStart(2, '0');
+    return tasksForDate.find((t) => {
+      if (!t.startTime) return false;
+      const [taskH] = t.startTime.split(':');
+      return taskH === hourStr;
+    });
   };
 
   return (
@@ -151,17 +164,41 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({
             </span>
           </div>
 
-          <div className="p-3 bg-surface/30 rounded-xl hairline-border space-y-1">
-            {HOURS.slice(0, 10).map((hour) => (
-              <div key={hour} className="flex items-center gap-3 py-1.5 border-b border-border-main/20 last:border-0">
-                <span className="w-10 text-[10px] font-mono text-text-secondary text-right shrink-0">
-                  {String(hour).padStart(2, '0')}:00
-                </span>
-                <div className="flex-1 h-5 rounded bg-surface/40 border border-border-main/20 flex items-center px-2">
-                  <span className="text-[10px] text-text-secondary/50 font-mono">Available slot</span>
+          <div className="p-3 bg-surface/30 rounded-xl hairline-border space-y-1.5">
+            {HOURS.map((hour) => {
+              const matchedTask = getTaskForHour(hour);
+              const isDone = matchedTask?.status === 'completed';
+
+              return (
+                <div
+                  key={hour}
+                  className="flex items-center gap-3 py-1 border-b border-border-main/15 last:border-0"
+                >
+                  <span className="w-10 text-[10px] font-mono text-text-secondary text-right shrink-0">
+                    {String(hour).padStart(2, '0')}:00
+                  </span>
+                  {matchedTask ? (
+                    <div
+                      className={`flex-1 min-h-[24px] rounded px-2 py-0.5 flex items-center gap-1.5 text-xs font-mono truncate hairline-border ${
+                        isDone
+                          ? 'bg-surface/40 text-text-secondary line-through'
+                          : 'bg-red-main/15 border-red-main/30 text-text-main font-medium'
+                      }`}
+                    >
+                      {isDone && <Check className="w-3 h-3 text-red-main shrink-0" />}
+                      <span className="truncate">{matchedTask.title}</span>
+                      <span className="text-[10px] text-text-secondary/70 ml-auto shrink-0">
+                        {matchedTask.startTime}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex-1 h-5 rounded bg-surface/20 border border-dashed border-border-main/20 flex items-center px-2">
+                      <span className="text-[10px] text-text-secondary/40 font-mono">Free</span>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
