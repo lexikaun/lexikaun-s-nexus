@@ -57,7 +57,7 @@ export interface Channel {
 }
 
 export interface TaskSubtask {
-  id: string;
+  id?: string;
   title: string;
   done: boolean;
 }
@@ -65,8 +65,8 @@ export interface TaskSubtask {
 export interface Task {
   id: string;
   userId: string;
-  /** @deprecated Optional legacy field. New tasks do not require or write a space tag. */
-  space?: SpaceType;
+  /** Optional space tag for backward compatibility */
+  space?: 'personal' | 'professional' | 'music' | SpaceType;
   goalId?: string;
   channelId?: string | null;
   title: string;
@@ -74,10 +74,12 @@ export interface Task {
   date: string; // YYYY-MM-DD
   startTime: string; // HH:mm (24h)
   endTime: string; // HH:mm (24h)
+  scheduledTime?: any | null; // Timestamp | string | null
   duration?: number; // duration in minutes
-  durationMinutes?: number; // Legacy compatibility
+  durationMinutes?: number; // duration in minutes (default 30)
   priority: Priority;
   status: TaskStatus;
+  done?: boolean;
   subtasks?: TaskSubtask[];
   notesCount?: number;
   associatedBeatId?: string; // Links task directly to a self-produced beat
