@@ -1,9 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Plus,
-  Clock,
-  Inbox,
-} from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Task, Goal } from '../../types';
 import { QuickAddTask } from './QuickAddTask';
 import { TaskCard } from './TaskCard';
@@ -33,23 +29,6 @@ export interface DayColumnProps {
   onCreateGoal?: (title: string) => Promise<string>;
 }
 
-function calculateMinutes(startTime?: string, endTime?: string, duration?: number): number {
-  if (duration && duration > 0) return duration;
-  if (!startTime || !endTime) return 0;
-  const [sH, sM] = startTime.split(':').map(Number);
-  const [eH, eM] = endTime.split(':').map(Number);
-  const diff = (eH * 60 + (eM || 0)) - (sH * 60 + (sM || 0));
-  return diff > 0 ? diff : 0;
-}
-
-function formatDuration(mins: number): string {
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  if (h === 0) return `${m}m`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
-}
-
 export const DayColumn: React.FC<DayColumnProps> = ({
   date,
   isToday,
@@ -68,29 +47,25 @@ export const DayColumn: React.FC<DayColumnProps> = ({
   const [isAddingInline, setIsAddingInline] = useState(false);
 
   const dateStr = date.toISOString().split('T')[0];
-  const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+  const fullDayName = date.toLocaleDateString('en-US', { weekday: 'long' });
   const dayNumber = date.getDate();
-  const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+  const monthName = date.toLocaleDateString('en-US', { month: 'long' });
 
-  // Separate scheduled vs unscheduled
-  const scheduledTasks = tasks
-    .filter((t) => t.startTime && t.startTime.trim() !== '')
-    .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+  // Single unified chronological task stream
+  const sortedTasks = [...tasks].sort((a, b) => {
+    if (a.startTime && b.startTime) {
+      return a.startTime.localeCompare(b.startTime);
+    }
+    if (a.startTime) return -1;
+    if (b.startTime) return 1;
+    return (a.createdAt || 0) - (b.createdAt || 0);
+  });
 
-  const unscheduledTasks = tasks.filter(
-    (t) => !t.startTime || t.startTime.trim() === ''
-  );
-
-  // Real progress calculation
+  // Progress calculation
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => t.status === 'completed').length;
   const progressPercent =
     totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-  // Scheduled total time
-  const totalScheduledMinutes = scheduledTasks.reduce((acc, t) => {
-    return acc + calculateMinutes(t.startTime, t.endTime, t.duration || t.durationMinutes);
-  }, 0);
 
   const showQuickAdd = isAddingInline || isAddingExternal;
 
@@ -113,145 +88,76 @@ export const DayColumn: React.FC<DayColumnProps> = ({
   return (
     <div
       className={`flex-1 min-w-[280px] max-w-[420px] flex flex-col h-full border-r border-border-main/40 select-none ${
-        isToday ? 'bg-surface/15' : 'bg-bg-main/50'
+        isToday ? 'bg-surface/10' : 'bg-bg-main'
       }`}
     >
-      {/* Column Header */}
-      <div className="p-3.5 border-b border-border-main/50 flex flex-col gap-2.5 shrink-0 bg-bg-main">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span
-              className={`text-xs font-semibold uppercase tracking-wider ${
-                isToday ? 'text-red-main' : 'text-text-secondary'
+      {/* 1. Calm Column Header */}
+      <div className="px-4 pt-3.5 pb-2 shrink-0 bg-bg-main space-y-1">
+        <div className="flex items-baseline justify-between">
+          <div>
+            <div
+              className={`text-sm font-medium ${
+                isToday ? 'text-red-main font-semibold' : 'text-text-main'
               }`}
             >
-              {dayName}
-            </span>
-            <span
-              className={`text-sm font-mono font-medium ${
-                isToday ? 'text-text-main font-bold' : 'text-text-main'
-              }`}
-            >
+              {fullDayName}
+            </div>
+            <div className="text-xs text-text-secondary">
               {monthName} {dayNumber}
-            </span>
+            </div>
           </div>
-
-          {isToday && (
-            <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-red-main/15 text-red-main border border-red-main/30 font-medium">
-              Today
-            </span>
-          )}
         </div>
 
-        {/* Real Daily Completion Progress Bar */}
-        <div className="w-full flex items-center gap-2">
-          <div className="flex-1 h-1.5 bg-surface rounded-full overflow-hidden hairline-border">
-            <div
-              className={`h-full rounded-full transition-all duration-300 ${
-                progressPercent === 100 ? 'bg-emerald-500' : 'bg-red-main'
-              }`}
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-          <span className="text-[10px] font-mono text-text-secondary shrink-0">
-            {completedTasks}/{totalTasks} ({progressPercent}%)
-          </span>
+        {/* Thin 2px progress bar directly below the date header */}
+        <div className="w-full h-[2px] bg-surface rounded-full overflow-hidden mt-1.5">
+          <div
+            className={`h-full rounded-full transition-all duration-300 ${
+              progressPercent === 100 ? 'bg-emerald-500' : 'bg-red-main'
+            }`}
+            style={{ width: `${progressPercent}%` }}
+          />
         </div>
       </div>
 
-      {/* Column Content: Scheduled + Unscheduled sections + Sunsama Inline Add */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-4">
-        {/* 1. Scheduled Tasks Section */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-1.5 text-[10px] uppercase font-mono tracking-wider text-text-secondary">
-              <Clock className="w-3 h-3 text-text-secondary" />
-              <span>Scheduled</span>
-            </div>
-            <span className="text-[10px] font-mono text-text-secondary">
-              {formatDuration(totalScheduledMinutes)}
-            </span>
+      {/* 2. Unified Day Column Stream */}
+      <div className="flex-1 overflow-y-auto px-3.5 py-2 space-y-2">
+        {/* + Add Task trigger / Inline Quick Add directly below header */}
+        {showQuickAdd ? (
+          <div className="mb-2">
+            <QuickAddTask
+              dateStr={dateStr}
+              goals={goals}
+              onCreateGoal={onCreateGoal}
+              onSave={handleSave}
+              onCancel={handleCloseAdd}
+            />
           </div>
+        ) : (
+          <button
+            onClick={handleOpenAdd}
+            className="w-full flex items-center gap-2 py-1.5 px-2.5 rounded-lg border border-transparent hover:border-border-main/50 hover:bg-surface/50 text-xs text-text-secondary/70 hover:text-text-main transition-all cursor-pointer group text-left"
+          >
+            <Plus className="w-3.5 h-3.5 text-text-secondary group-hover:text-red-main transition-colors shrink-0" />
+            <span>Add task</span>
+          </button>
+        )}
 
-          {scheduledTasks.length === 0 ? (
-            <div className="p-3 rounded-lg bg-surface/20 border border-dashed border-border-main/30 text-center">
-              <p className="text-[11px] text-text-secondary/60">No scheduled time blocks</p>
-            </div>
-          ) : (
-            <div className="space-y-1.5">
-              {scheduledTasks.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  goals={goals}
-                  onClick={(t) => onSelectTask?.(t)}
-                  onToggleComplete={(t) => onToggleComplete?.(t)}
-                  onDelete={(id) => onDeleteTask?.(id)}
-                  onQuickRescheduleTomorrow={
-                    onQuickRescheduleTomorrow
-                      ? (t) => onQuickRescheduleTomorrow(t)
-                      : undefined
-                  }
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* 2. Unscheduled Tasks Section */}
-        <div className="space-y-2 pt-2 border-t border-border-main/40">
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-1.5 text-[10px] uppercase font-mono tracking-wider text-text-secondary">
-              <Inbox className="w-3 h-3 text-text-secondary" />
-              <span>Tasks</span>
-            </div>
-            <span className="text-[10px] font-mono text-text-secondary">
-              {unscheduledTasks.length} {unscheduledTasks.length === 1 ? 'task' : 'tasks'}
-            </span>
-          </div>
-
-          {unscheduledTasks.length > 0 && (
-            <div className="space-y-1.5">
-              {unscheduledTasks.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  goals={goals}
-                  onClick={(t) => onSelectTask?.(t)}
-                  onToggleComplete={(t) => onToggleComplete?.(t)}
-                  onDelete={(id) => onDeleteTask?.(id)}
-                  onQuickRescheduleTomorrow={
-                    onQuickRescheduleTomorrow
-                      ? (t) => onQuickRescheduleTomorrow(t)
-                      : undefined
-                  }
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Sunsama Inline Creation Card */}
-          {showQuickAdd ? (
-            <div className="pt-1">
-              <QuickAddTask
-                dateStr={dateStr}
-                goals={goals}
-                onCreateGoal={onCreateGoal}
-                onSave={handleSave}
-                onCancel={handleCloseAdd}
-              />
-            </div>
-          ) : (
-            /* Lightweight inline "+ Add task" trigger button */
-            <button
-              onClick={handleOpenAdd}
-              className="w-full flex items-center gap-2 py-2 px-3 rounded-lg border border-transparent hover:border-border-main/50 hover:bg-surface/50 text-xs font-normal text-text-secondary hover:text-text-main transition-all cursor-pointer group text-left"
-            >
-              <Plus className="w-3.5 h-3.5 text-text-secondary group-hover:text-red-main transition-colors shrink-0" />
-              <span className="text-text-secondary/70 group-hover:text-text-main">Add task</span>
-            </button>
-          )}
-        </div>
+        {/* Single continuous list of task cards */}
+        {sortedTasks.map((task) => (
+          <TaskCard
+            key={task.id}
+            task={task}
+            goals={goals}
+            onClick={(t) => onSelectTask?.(t)}
+            onToggleComplete={(t) => onToggleComplete?.(t)}
+            onDelete={(id) => onDeleteTask?.(id)}
+            onQuickRescheduleTomorrow={
+              onQuickRescheduleTomorrow
+                ? (t) => onQuickRescheduleTomorrow(t)
+                : undefined
+            }
+          />
+        ))}
       </div>
     </div>
   );

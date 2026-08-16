@@ -1,13 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  Calendar as CalendarIcon,
-  PanelRightClose,
-  ChevronLeft,
-  ChevronRight,
   Clock,
+  PanelRightClose,
   Check,
-  Plus,
   Music,
+  Target,
 } from 'lucide-react';
 import { Task } from '../../types';
 
@@ -23,7 +20,27 @@ export interface CalendarPanelProps {
   onAddSlotTask?: (startTime: string, endTime: string, dateStr: string) => void;
 }
 
-const HOURS = Array.from({ length: 15 }, (_, i) => i + 7); // 07:00 to 21:00
+const HOUR_HEIGHT = 48; // px per hour
+const TOTAL_HOURS = 24;
+
+function formatHour12h(hour: number): string {
+  if (hour === 0) return '12 AM';
+  if (hour === 12) return '12 PM';
+  if (hour > 12) return `${hour - 12} PM`;
+  return `${hour} AM`;
+}
+
+function timeToMinutes(timeStr?: string): number {
+  if (!timeStr) return 0;
+  const [h, m] = timeStr.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+function minutesToTimeString(minutes: number): string {
+  const h = Math.floor(minutes / 60) % 24;
+  const m = minutes % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
 
 export const CalendarPanel: React.FC<CalendarPanelProps> = ({
   isOpen,
@@ -32,259 +49,189 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({
   visibleDates = [],
   onSelectDate,
   tasksForDate = [],
-  allTasks = [],
   onSelectTask,
   onAddSlotTask,
 }) => {
-  const [currentMonth, setCurrentMonth] = useState(new Date(selectedDate));
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [currentTimeMinutes, setCurrentTimeMinutes] = useState<number>(() => {
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes();
+  });
+
+  // Keep live time indicator updated
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      setCurrentTimeMinutes(now.getHours() * 60 + now.getMinutes());
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const selectedDateStr = selectedDate.toISOString().split('T')[0];
+  const now = new Date();
+  const isToday =
+    selectedDate.getFullYear() === now.getFullYear() &&
+    selectedDate.getMonth() === now.getMonth() &&
+    selectedDate.getDate() === now.getDate();
+
+  // Auto-scroll to near current time or first scheduled task on mount/date change
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      const targetMinutes = isToday
+        ? Math.max(0, currentTimeMinutes - 60)
+        : 8 * 60; // 8 AM default
+      const scrollPos = (targetMinutes / 60) * HOUR_HEIGHT;
+      scrollContainerRef.current.scrollTop = scrollPos;
+    }
+  }, [selectedDateStr, isToday]);
 
   if (!isOpen) return null;
 
-  const year = currentMonth.getFullYear();
-  const month = currentMonth.getMonth();
-  const selectedDateStr = selectedDate.toISOString().split('T')[0];
+  const scheduledTasks = tasksForDate.filter(
+    (t) => t.startTime && t.startTime.trim() !== ''
+  );
 
-  const monthName = currentMonth.toLocaleDateString('en-US', {
-    month: 'long',
-    year: 'numeric',
-  });
-
-  // Compute days in month
-  const firstDayIndex = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  const daysArray: (number | null)[] = [];
-  for (let i = 0; i < firstDayIndex; i++) {
-    daysArray.push(null);
-  }
-  for (let d = 1; d <= daysInMonth; d++) {
-    daysArray.push(d);
-  }
-
-  const handlePrevMonth = () => {
-    setCurrentMonth(new Date(year, month - 1, 1));
-  };
-
-  const handleNextMonth = () => {
-    setCurrentMonth(new Date(year, month + 1, 1));
-  };
-
-  const isCurrentSelected = (day: number) => {
-    return (
-      selectedDate.getFullYear() === year &&
-      selectedDate.getMonth() === month &&
-      selectedDate.getDate() === day
-    );
-  };
-
-  const isTodayDate = (day: number) => {
-    const now = new Date();
-    return (
-      now.getFullYear() === year &&
-      now.getMonth() === month &&
-      now.getDate() === day
-    );
-  };
-
-  // Check if a day has any tasks in allTasks
-  const hasTasksOnDay = (day: number) => {
-    const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return allTasks.some((t) => t.date === dayStr);
-  };
-
-  // Find all tasks that overlap with an hour
-  const getTasksForHour = (hour: number) => {
-    const hourStr = String(hour).padStart(2, '0');
-    return tasksForDate.filter((t) => {
-      if (!t.startTime) return false;
-      const [taskH] = t.startTime.split(':');
-      return taskH === hourStr;
-    });
+  const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const offsetY = e.clientY - rect.top;
+    const totalMinutes = Math.floor((offsetY / HOUR_HEIGHT) * 60);
+    const roundedMinutes = Math.floor(totalMinutes / 30) * 30;
+    const startTimeStr = minutesToTimeString(roundedMinutes);
+    const endTimeStr = minutesToTimeString(roundedMinutes + 30);
+    onAddSlotTask?.(startTimeStr, endTimeStr, selectedDateStr);
   };
 
   return (
     <aside className="w-80 h-full border-l border-border-main/50 bg-bg-main flex flex-col shrink-0 select-none overflow-hidden transition-all duration-200">
-      {/* Panel Header */}
-      <div className="h-12 border-b border-border-main/50 px-4 flex items-center justify-between shrink-0 bg-bg-main">
-        <div className="flex items-center gap-2 text-xs font-medium text-text-main">
-          <CalendarIcon className="w-4 h-4 text-red-main" />
-          <span>Timeline Overview</span>
+      {/* 1. Panel Header & Day Switcher */}
+      <div className="border-b border-border-main/50 p-3 bg-bg-main shrink-0 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs font-medium text-text-main">
+            <Clock className="w-3.5 h-3.5 text-red-main" />
+            <span>Timeline</span>
+          </div>
+          <button
+            onClick={onClose}
+            title="Collapse timeline panel"
+            className="p-1 rounded-md hover:bg-surface text-text-secondary hover:text-text-main transition-colors cursor-pointer"
+          >
+            <PanelRightClose className="w-4 h-4" />
+          </button>
         </div>
-        <button
-          onClick={onClose}
-          title="Collapse timeline panel"
-          className="p-1 rounded-md hover:bg-surface text-text-secondary hover:text-text-main transition-colors cursor-pointer"
-        >
-          <PanelRightClose className="w-4 h-4" />
-        </button>
-      </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Quick Day Switcher Pills (from visible workspace columns) */}
+        {/* Visible Days Tab Selector */}
         {visibleDates.length > 0 && (
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-[10px] font-mono text-text-secondary uppercase">
-              <span>Visible Days</span>
-            </div>
-            <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
-              {visibleDates.map((d) => {
-                const dStr = d.toISOString().split('T')[0];
-                const isSel = dStr === selectedDateStr;
-                const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
-                const dayNum = d.getDate();
-
-                return (
-                  <button
-                    key={dStr}
-                    onClick={() => onSelectDate(d)}
-                    className={`px-2.5 py-1 rounded-md text-xs font-mono transition-colors shrink-0 cursor-pointer ${
-                      isSel
-                        ? 'bg-red-main text-white font-medium shadow-sm'
-                        : 'bg-surface hairline-border text-text-secondary hover:text-text-main hover:bg-surface/80'
-                    }`}
-                  >
-                    {weekday} {dayNum}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Mini Month Calendar */}
-        <div className="p-3 bg-surface/30 rounded-xl hairline-border space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-text-main">{monthName}</span>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={handlePrevMonth}
-                className="p-1 rounded hover:bg-surface text-text-secondary hover:text-text-main transition-colors cursor-pointer"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={handleNextMonth}
-                className="p-1 rounded hover:bg-surface text-text-secondary hover:text-text-main transition-colors cursor-pointer"
-              >
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Weekday headers */}
-          <div className="grid grid-cols-7 text-center text-[10px] font-mono text-text-secondary uppercase">
-            <span>Su</span>
-            <span>Mo</span>
-            <span>Tu</span>
-            <span>We</span>
-            <span>Th</span>
-            <span>Fr</span>
-            <span>Sa</span>
-          </div>
-
-          {/* Days Grid */}
-          <div className="grid grid-cols-7 gap-1 text-center text-xs">
-            {daysArray.map((day, idx) => {
-              if (day === null) {
-                return <div key={`empty_${idx}`} className="h-7" />;
-              }
-              const selected = isCurrentSelected(day);
-              const today = isTodayDate(day);
-              const hasTasks = hasTasksOnDay(day);
+          <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none">
+            {visibleDates.map((d) => {
+              const dStr = d.toISOString().split('T')[0];
+              const isSel = dStr === selectedDateStr;
+              const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
+              const dayNum = d.getDate();
 
               return (
                 <button
-                  key={`day_${day}`}
-                  onClick={() => onSelectDate(new Date(year, month, day))}
-                  className={`h-7 w-7 mx-auto rounded-md flex flex-col items-center justify-center font-mono text-xs transition-colors cursor-pointer relative ${
-                    selected
-                      ? 'bg-red-main text-white font-medium'
-                      : today
-                      ? 'bg-surface hairline-border text-red-main font-bold'
-                      : 'text-text-secondary hover:text-text-main hover:bg-surface/70'
+                  key={dStr}
+                  onClick={() => onSelectDate(d)}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-mono transition-colors shrink-0 cursor-pointer ${
+                    isSel
+                      ? 'bg-red-main text-white font-medium shadow-sm'
+                      : 'bg-surface hairline-border text-text-secondary hover:text-text-main hover:bg-surface/80'
                   }`}
                 >
-                  <span>{day}</span>
-                  {hasTasks && !selected && (
-                    <span className="w-1 h-1 rounded-full bg-text-secondary/70 absolute bottom-0.5" />
-                  )}
+                  {weekday} {dayNum}
                 </button>
               );
             })}
           </div>
-        </div>
+        )}
+      </div>
 
-        {/* Daily Timeline Canvas (07:00 - 21:00) */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-1.5 text-[10px] uppercase font-mono tracking-wider text-text-secondary">
-              <Clock className="w-3 h-3 text-text-secondary" />
-              <span>Timeline: {selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-            </div>
-            <span className="text-[10px] font-mono text-text-secondary">
-              {tasksForDate.filter((t) => t.startTime).length} blocks
-            </span>
-          </div>
+      {/* 2. True Vertical Hourly Timeline Rail (12 AM - 11 PM) */}
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto relative bg-bg-main select-none"
+      >
+        <div
+          className="relative min-h-[1152px] cursor-crosshair"
+          style={{ height: `${TOTAL_HOURS * HOUR_HEIGHT}px` }}
+          onClick={handleTimelineClick}
+        >
+          {/* Hourly grid lines & labels */}
+          {Array.from({ length: TOTAL_HOURS }).map((_, hour) => {
+            const top = hour * HOUR_HEIGHT;
+            return (
+              <div
+                key={hour}
+                className="absolute left-0 right-0 border-t border-border-main/20 flex items-start pointer-events-none"
+                style={{ top: `${top}px`, height: `${HOUR_HEIGHT}px` }}
+              >
+                <span className="w-12 pr-2 text-[10px] font-mono text-text-secondary/60 text-right -translate-y-2 select-none">
+                  {formatHour12h(hour)}
+                </span>
+                <div className="flex-1 h-full border-b border-border-main/10" />
+              </div>
+            );
+          })}
 
-          <div className="p-2.5 bg-surface/30 rounded-xl hairline-border space-y-1.5">
-            {HOURS.map((hour) => {
-              const matchedTasks = getTasksForHour(hour);
-              const hourStr = String(hour).padStart(2, '0') + ':00';
-              const nextHourStr = String(hour + 1).padStart(2, '0') + ':00';
+          {/* Time-Blocked Task Cards */}
+          {scheduledTasks.map((task) => {
+            const startMins = timeToMinutes(task.startTime);
+            let endMins = timeToMinutes(task.endTime);
+            if (endMins <= startMins) {
+              endMins = startMins + (task.durationMinutes || 30);
+            }
+            const durationMins = Math.max(15, endMins - startMins);
 
-              return (
-                <div
-                  key={hour}
-                  className="flex items-start gap-2.5 py-1 border-b border-border-main/15 last:border-0 min-h-[30px]"
-                >
-                  <span className="w-10 text-[10px] font-mono text-text-secondary text-right shrink-0 pt-0.5">
-                    {hourStr}
+            const top = (startMins / 60) * HOUR_HEIGHT;
+            const height = Math.max(26, (durationMins / 60) * HOUR_HEIGHT);
+            const isDone = task.status === 'completed';
+
+            return (
+              <div
+                key={task.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectTask?.(task);
+                }}
+                className={`absolute left-12 right-3 rounded-lg px-2 py-1 shadow-sm border transition-all cursor-pointer overflow-hidden z-10 flex flex-col justify-between ${
+                  isDone
+                    ? 'bg-surface/60 border-border-main text-text-secondary opacity-60 line-through'
+                    : 'bg-surface border-red-main/40 text-text-main hover:border-red-main hover:shadow-md'
+                }`}
+                style={{ top: `${top}px`, height: `${height}px` }}
+                title={`${task.title} (${task.startTime} – ${task.endTime || ''})`}
+              >
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[11px] font-medium truncate leading-tight flex-1">
+                    {task.title}
                   </span>
-
-                  {matchedTasks.length > 0 ? (
-                    <div className="flex-1 space-y-1">
-                      {matchedTasks.map((task) => {
-                        const isDone = task.status === 'completed';
-                        return (
-                          <div
-                            key={task.id}
-                            onClick={() => onSelectTask?.(task)}
-                            className={`rounded px-2 py-1 flex items-center gap-1.5 text-xs font-mono truncate hairline-border cursor-pointer transition-all hover:scale-[1.01] ${
-                              isDone
-                                ? 'bg-surface/40 text-text-secondary line-through'
-                                : 'bg-red-main/15 border-red-main/40 text-text-main font-medium hover:bg-red-main/25'
-                            }`}
-                            title={`Click to edit: ${task.title} (${task.startTime} - ${task.endTime})`}
-                          >
-                            {isDone && <Check className="w-3 h-3 text-red-main shrink-0" />}
-                            {task.associatedBeatId && (
-                              <Music className="w-2.5 h-2.5 text-music-accent shrink-0" />
-                            )}
-                            <span className="truncate flex-1">{task.title}</span>
-                            <span className="text-[10px] text-text-secondary shrink-0 font-mono">
-                              {task.startTime}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onAddSlotTask?.(hourStr, nextHourStr, selectedDateStr)
-                      }
-                      className="flex-1 h-5 rounded bg-surface/20 border border-dashed border-border-main/20 hover:border-red-main/40 hover:bg-surface/50 flex items-center justify-between px-2 text-[10px] text-text-secondary/40 hover:text-text-secondary font-mono transition-all cursor-pointer group"
-                      title={`Add task for ${hourStr}`}
-                    >
-                      <span>Free</span>
-                      <Plus className="w-3 h-3 opacity-0 group-hover:opacity-100 text-red-main transition-opacity" />
-                    </button>
-                  )}
+                  {isDone && <Check className="w-2.5 h-2.5 text-red-main shrink-0" />}
                 </div>
-              );
-            })}
-          </div>
+
+                {height >= 36 && (
+                  <div className="flex items-center justify-between text-[9px] font-mono text-text-secondary">
+                    <span>
+                      {task.startTime} – {task.endTime || ''}
+                    </span>
+                    {task.associatedBeatId && (
+                      <Music className="w-2.5 h-2.5 text-music-accent shrink-0" />
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Live Current Time Horizontal Red Line */}
+          {isToday && (
+            <div
+              className="absolute left-0 right-0 z-20 pointer-events-none flex items-center"
+              style={{ top: `${(currentTimeMinutes / 60) * HOUR_HEIGHT}px` }}
+            >
+              <div className="w-2 h-2 rounded-full bg-red-main -ml-1 shrink-0 ring-4 ring-red-main/20" />
+              <div className="flex-1 h-[2px] bg-red-main shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+            </div>
+          )}
         </div>
       </div>
     </aside>

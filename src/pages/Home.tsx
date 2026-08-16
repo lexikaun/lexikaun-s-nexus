@@ -4,9 +4,7 @@ import {
   ChevronLeft,
   ChevronRight,
   PanelRightClose,
-  Plus,
 } from 'lucide-react';
-import { Button } from '../components/ui/Button';
 import { DayColumn } from '../components/home/DayColumn';
 import { CalendarPanel } from '../components/home/CalendarPanel';
 import { TaskScheduleModal } from '../components/home/TaskScheduleModal';
@@ -36,23 +34,23 @@ export const Home: React.FC = () => {
     return d;
   });
 
-  // Selected date for Calendar Panel detail preview
+  // Selected date for Timeline Panel detail preview
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date>(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     return d;
   });
 
-  // Controls which day column has its quick-add open via top bar
+  // Controls which day column has its quick-add open externally (e.g. from timeline click)
   const [activeAddingDate, setActiveAddingDate] = useState<string | null>(null);
 
   // Selected task for click-based detail/reschedule modal
   const [selectedTaskForEdit, setSelectedTaskForEdit] = useState<Task | null>(null);
 
-  // Number of visible day columns (3, 4, 5, or 7)
-  const [visibleDaysCount, setVisibleDaysCount] = useState<number>(4);
+  // Number of visible day columns
+  const visibleDaysCount = 4;
 
-  // Calendar Panel collapsible toggle
+  // Timeline Panel collapsible toggle
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(true);
 
   // Subscribe to live tasks from Firestore / local cache (unified, no space filter)
@@ -144,10 +142,10 @@ export const Home: React.FC = () => {
   const handleSaveNewTask = async (taskData: {
     title: string;
     date: string;
-    startTime: string;
-    endTime: string;
+    startTime?: string;
+    endTime?: string;
     durationMinutes?: number;
-    priority: any;
+    priority?: any;
     goalId?: string;
     notes?: string;
   }) => {
@@ -156,10 +154,10 @@ export const Home: React.FC = () => {
       userId,
       title: taskData.title,
       date: taskData.date,
-      startTime: taskData.startTime,
-      endTime: taskData.endTime,
-      durationMinutes: taskData.durationMinutes,
-      priority: taskData.priority,
+      startTime: taskData.startTime || '',
+      endTime: taskData.endTime || '',
+      durationMinutes: taskData.durationMinutes || 30,
+      priority: taskData.priority || 'medium',
       status: 'planned',
       goalId: taskData.goalId,
       notes: taskData.notes,
@@ -174,7 +172,7 @@ export const Home: React.FC = () => {
     await createTask(userId, newTask);
   };
 
-  // Create new goal inline from QuickAdd / Schedule modal
+  // Create new goal inline
   const handleCreateGoal = async (title: string): Promise<string> => {
     const newGoal: Goal = {
       id: 'goal_' + Date.now(),
@@ -255,15 +253,6 @@ export const Home: React.FC = () => {
     await deleteTask(userId, realId);
   };
 
-  // Trigger quick add from top bar
-  const handleTopBarAddTask = () => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const isTodayVisible = visibleDates.some(
-      (d) => d.toISOString().split('T')[0] === todayStr
-    );
-    setActiveAddingDate(isTodayVisible ? todayStr : startIsoStr);
-  };
-
   // Date range title for header
   const firstDate = visibleDates[0];
   const lastDate = visibleDates[visibleDates.length - 1];
@@ -290,7 +279,7 @@ export const Home: React.FC = () => {
 
   return (
     <div className="w-full h-full flex flex-col min-h-0 bg-bg-main overflow-hidden select-none">
-      {/* Top Workspace Action & Navigation Bar */}
+      {/* 5. Calm, Clean Top Bar */}
       <header className="h-12 border-b border-border-main/50 px-4 flex items-center justify-between shrink-0 bg-bg-main">
         {/* Left: Navigation Controls & Date Range */}
         <div className="flex items-center gap-3">
@@ -322,61 +311,28 @@ export const Home: React.FC = () => {
           </span>
         </div>
 
-        {/* Center/Right: View Options & Calendar Toggle */}
+        {/* Right: Collapsible Timeline Toggle */}
         <div className="flex items-center gap-2">
-          {/* Days visible dropdown/toggle */}
-          <div className="flex items-center gap-1 bg-surface/40 p-0.5 rounded-lg hairline-border text-[11px] font-mono">
-            {[3, 4, 5, 7].map((num) => (
-              <button
-                key={num}
-                onClick={() => setVisibleDaysCount(num)}
-                className={`px-2 py-1 rounded transition-colors cursor-pointer ${
-                  visibleDaysCount === num
-                    ? 'bg-surface hairline-border text-text-main font-medium'
-                    : 'text-text-secondary hover:text-text-main'
-                }`}
-              >
-                {num}d
-              </button>
-            ))}
-          </div>
-
-          <div className="h-4 w-px bg-border-main/50" />
-
-          {/* Quick Add Task affordance */}
-          <Button
-            onClick={handleTopBarAddTask}
-            variant="primary"
-            size="sm"
-            className="gap-1.5 text-xs bg-red-main hover:bg-red-hover text-white cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Add Task</span>
-          </Button>
-
-          {/* Collapsible Calendar Panel Toggle */}
           <button
             onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-            title={isCalendarOpen ? 'Hide calendar panel' : 'Show calendar panel'}
-            className={`p-2 rounded-md transition-colors cursor-pointer flex items-center gap-1.5 text-xs ${
+            title={isCalendarOpen ? 'Hide timeline panel' : 'Show timeline panel'}
+            className={`p-1.5 px-2.5 rounded-md transition-colors cursor-pointer flex items-center gap-1.5 text-xs ${
               isCalendarOpen
                 ? 'bg-surface hairline-border text-text-main font-medium'
                 : 'hover:bg-surface text-text-secondary hover:text-text-main'
             }`}
           >
             {isCalendarOpen ? (
-              <PanelRightClose className="w-4 h-4 text-red-main" />
+              <PanelRightClose className="w-3.5 h-3.5 text-red-main" />
             ) : (
-              <Calendar className="w-4 h-4" />
+              <Calendar className="w-3.5 h-3.5" />
             )}
-            <span className="hidden md:inline text-xs font-mono">
-              {isCalendarOpen ? 'Hide Panel' : 'Calendar'}
-            </span>
+            <span className="text-xs font-mono">Timeline</span>
           </button>
         </div>
       </header>
 
-      {/* Main Multi-Region Body: Day Columns + Collapsible Calendar Panel */}
+      {/* Main Multi-Region Body: Day Columns + Collapsible Vertical Timeline Panel */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Central Multi-Day Horizontal Columns */}
         <main className="flex-1 flex overflow-x-auto overflow-y-hidden min-h-0 divide-x divide-border-main/30">
@@ -407,7 +363,7 @@ export const Home: React.FC = () => {
           })}
         </main>
 
-        {/* Right Collapsible Calendar & Timeline Panel */}
+        {/* Right Collapsible Vertical Hourly Timeline Panel */}
         <CalendarPanel
           isOpen={isCalendarOpen}
           onClose={() => setIsCalendarOpen(false)}
