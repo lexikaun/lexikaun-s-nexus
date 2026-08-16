@@ -9,13 +9,6 @@ export const AppLayout: React.FC = () => {
   const { user, logout } = useAuth();
 
   const getSubNav = () => {
-    if (location.pathname.startsWith('/professional')) {
-      return [
-        { label: 'Today', path: '/professional' },
-        { label: 'Planner', path: '/professional/planner' },
-        { label: 'Goals', path: '/professional/goals' },
-      ];
-    }
     if (location.pathname.startsWith('/music')) {
       return [
         { label: 'Beats Catalog', path: '/music' },
@@ -24,25 +17,16 @@ export const AppLayout: React.FC = () => {
         { label: 'Playlists', path: '/music/playlists' },
       ];
     }
-    if (location.pathname.startsWith('/personal')) {
-      return [
-        { label: 'Today', path: '/personal' },
-        { label: 'Planner', path: '/personal/planner' },
-        { label: 'Goals', path: '/personal/goals' },
-        { label: 'Habits', path: '/personal/habits' },
-      ];
-    }
     return null;
   };
 
   const subNav = getSubNav();
   const isMusic = location.pathname.startsWith('/music');
+  const isHome = location.pathname.startsWith('/home') || location.pathname === '/';
 
   const getSectionTitle = () => {
-    if (location.pathname === '/') return 'Landing / Assistant';
-    if (location.pathname.startsWith('/professional')) return 'Professional';
-    if (location.pathname.startsWith('/music')) return 'Music Studio';
-    if (location.pathname.startsWith('/personal')) return 'Personal';
+    if (isHome) return 'Home';
+    if (isMusic) return 'Music Studio';
     if (location.pathname.startsWith('/search')) return 'Search';
     if (location.pathname.startsWith('/settings')) return 'Settings';
     return 'Lexikaun';
@@ -53,27 +37,25 @@ export const AppLayout: React.FC = () => {
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Header */}
-        <header className="h-14 border-b border-border-main/50 px-8 flex items-center justify-between shrink-0 select-none">
+        <header className="h-14 border-b border-border-main/50 px-6 flex items-center justify-between shrink-0 select-none bg-bg-main">
           <div className="flex items-center gap-6">
             <span className="text-xs uppercase tracking-wider text-text-secondary font-medium">
               {getSectionTitle()}
             </span>
 
-            {/* Subnav Tabs */}
+            {/* Music Subnav Tabs (Untouched) */}
             {subNav && (
               <div className="flex items-center gap-1">
                 {subNav.map((item) => (
                   <NavLink
                     key={item.path}
                     to={item.path}
-                    end={item.path === '/professional' || item.path === '/music' || item.path === '/personal'}
+                    end={item.path === '/music'}
                     className={({ isActive }) =>
                       `px-3 py-1 text-xs rounded-md transition-colors ${
                         isActive
-                          ? isMusic
-                            ? 'text-music-accent bg-surface font-medium'
-                            : 'text-text-main bg-surface font-medium'
-                          : 'text-text-secondary hover:text-text-main'
+                          ? 'text-music-accent bg-surface font-medium'
+                          : 'text-text-secondary hover:text-main'
                       }`
                     }
                   >
@@ -102,13 +84,22 @@ export const AppLayout: React.FC = () => {
           </div>
         </header>
 
-        {/* Content Area with standardized max-w-4xl mx-auto px-8 py-6 */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="w-full h-full max-w-4xl mx-auto px-8 py-6">
-            <Outlet />
-          </div>
+        {/* Content Area: Unconstrained full-width for Home workspace, max-w-4xl for settings/utility */}
+        <main className="flex-1 overflow-hidden flex flex-col min-h-0">
+          {isHome ? (
+            <div className="w-full h-full flex flex-col min-h-0 overflow-hidden">
+              <Outlet />
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto">
+              <div className="w-full max-w-4xl mx-auto px-8 py-6">
+                <Outlet />
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>
   );
 };
+

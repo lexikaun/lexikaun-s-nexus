@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { MessageSquare, Briefcase, Music, User, Search, Settings, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { Home, Music, Search, Settings, PanelLeftClose, PanelLeft } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
@@ -13,15 +13,16 @@ export const Sidebar: React.FC = () => {
     localStorage.setItem('lexikaun_sidebar_collapsed', JSON.stringify(collapsed));
   }, [collapsed]);
 
-  const navItems = [
-    { to: '/', label: 'Assistant', icon: MessageSquare, end: true },
-    { to: '/professional', label: 'Professional', icon: Briefcase },
+  const topItems = [
+    { to: '/search', label: 'Search', icon: Search },
+  ];
+
+  const primaryNavItems = [
+    { to: '/home', label: 'Home', icon: Home },
     { to: '/music', label: 'Music Studio', icon: Music, isMusic: true },
-    { to: '/personal', label: 'Personal', icon: User },
   ];
 
   const bottomItems = [
-    { to: '/search', label: 'Search', icon: Search },
     { to: '/settings', label: 'Settings', icon: Settings },
   ];
 
@@ -52,13 +53,48 @@ export const Sidebar: React.FC = () => {
         </button>
       </div>
 
-      {/* Main Navigation */}
-      <nav className="flex-1 py-4 px-2 space-y-1.5 overflow-y-auto">
-        {navItems.map((item) => (
+      {/* Top Search Navigation */}
+      <div className="p-2 border-b border-border-main/50 space-y-1">
+        {topItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
-            end={item.end}
+            title={collapsed ? item.label : undefined}
+            className={({ isActive }) =>
+              `relative flex items-center rounded-md text-xs font-normal transition-colors cursor-pointer group ${
+                collapsed ? 'justify-center h-10 w-full' : 'gap-3 px-3 py-2.5'
+              } ${
+                isActive
+                  ? 'text-text-main bg-surface font-medium'
+                  : 'text-text-secondary hover:text-text-main hover:bg-surface/50'
+              }`
+            }
+          >
+            {({ isActive }) => {
+              const Icon = item.icon;
+              return (
+                <>
+                  <Icon className="w-4 h-4 shrink-0" />
+                  {!collapsed && <span className="truncate">{item.label}</span>}
+                  {isActive && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-r bg-text-main" />
+                  )}
+                </>
+              );
+            }}
+          </NavLink>
+        ))}
+      </div>
+
+      {/* Main Core Destinations: Home & Music Studio */}
+      <nav className="flex-1 py-4 px-2 space-y-1.5 overflow-y-auto">
+        <div className={`px-3 pb-1.5 text-[10px] uppercase font-mono tracking-wider text-text-secondary ${collapsed ? 'text-center' : ''}`}>
+          {!collapsed ? 'Workspace' : '•'}
+        </div>
+        {primaryNavItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
             title={collapsed ? item.label : undefined}
             className={({ isActive }) => {
               const base = 'relative flex items-center rounded-md text-xs font-normal transition-colors cursor-pointer group ';
@@ -66,7 +102,7 @@ export const Sidebar: React.FC = () => {
                 return (
                   base +
                   (collapsed ? 'justify-center h-10 w-full ' : 'gap-3 px-3 py-2.5 ') +
-                  (isActive
+                  (isActive || location.pathname.startsWith('/music')
                     ? 'text-music-accent bg-surface font-medium'
                     : 'text-text-secondary hover:text-music-accent hover:bg-surface/50')
                 );
@@ -74,7 +110,7 @@ export const Sidebar: React.FC = () => {
               return (
                 base +
                 (collapsed ? 'justify-center h-10 w-full ' : 'gap-3 px-3 py-2.5 ') +
-                (isActive
+                (isActive || location.pathname.startsWith('/home')
                   ? 'text-text-main bg-surface font-medium'
                   : 'text-text-secondary hover:text-text-main hover:bg-surface/50')
               );
@@ -82,11 +118,12 @@ export const Sidebar: React.FC = () => {
           >
             {({ isActive }) => {
               const Icon = item.icon;
+              const active = item.isMusic ? (isActive || location.pathname.startsWith('/music')) : (isActive || location.pathname.startsWith('/home'));
               return (
                 <>
-                  <Icon className={`w-4 h-4 shrink-0 ${item.isMusic && isActive ? 'text-music-accent' : ''}`} />
+                  <Icon className={`w-4 h-4 shrink-0 ${item.isMusic && active ? 'text-music-accent' : ''}`} />
                   {!collapsed && <span className="truncate">{item.label}</span>}
-                  {isActive && (
+                  {active && (
                     <div
                       className={`absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-r ${
                         item.isMusic ? 'bg-music-accent' : 'bg-text-main'
