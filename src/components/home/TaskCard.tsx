@@ -100,22 +100,22 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           onClick(task);
         }
       }}
-      className={`group relative p-3 space-y-2 outline-none select-none transition-all duration-150 ease-out focus-visible:ring-1 focus-visible:ring-accent/40 ${
-        isDone ? 'opacity-35 bg-surface/50 hover:opacity-70' : ''
+      className={`group relative p-3.5 space-y-2.5 outline-none select-none transition-all duration-150 ease-out focus-visible:ring-2 focus-visible:ring-accent/50 ${
+        isDone ? 'opacity-40 bg-surface/60 hover:opacity-75' : ''
       }`}
     >
-      {/* 1. Top Row: Scheduled time & duration in clean monospace */}
+      {/* 1. Top Row: Scheduled time on left, duration pill on right (IBM Plex Mono) */}
       {(formattedTimeRange || duration > 0) && (
-        <div className="flex items-center justify-between font-mono text-[10.5px] text-ink-muted">
+        <div className="flex items-center justify-between font-mono text-[11px] text-ink-muted">
           {formattedTimeRange ? (
-            <span className="font-normal text-ink/80 tracking-tight">
+            <span className="font-medium text-ink/90 tracking-tight">
               {formattedTimeRange}
             </span>
           ) : (
             <span />
           )}
           {duration > 0 && (
-            <span className="px-1.5 py-0.5 rounded-[5px] bg-canvas/60 text-[9.5px] text-ink-muted font-mono tracking-tight">
+            <span className="px-2 py-0.5 rounded-[6px] bg-canvas/80 border border-hairline text-[10px] text-ink-muted font-mono tracking-tight">
               {formatDuration(duration)}
             </span>
           )}
@@ -123,8 +123,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
       )}
 
       {/* 2. Middle Row: Checkbox + Task Title in Fraunces */}
-      <div className="flex items-start gap-2.5">
-        {/* Minimal Circle Checkbox button */}
+      <div className="flex items-start gap-3">
+        {/* Checkbox button */}
         <button
           type="button"
           onClick={(e) => {
@@ -134,19 +134,19 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           title={isDone ? 'Mark as planned' : 'Mark as completed'}
           className={`w-4 h-4 mt-0.5 rounded-full flex items-center justify-center transition-all duration-150 cursor-pointer shrink-0 ${
             isDone
-              ? 'bg-accent text-canvas shadow-[0_0_8px_rgba(217,142,74,0.35)]'
-              : 'border border-[rgba(237,232,224,0.22)] hover:border-accent/80 bg-canvas/40 hover:scale-105'
+              ? 'bg-accent text-canvas shadow-[0_0_8px_rgba(217,142,74,0.4)]'
+              : 'border border-[rgba(237,232,224,0.3)] hover:border-accent bg-canvas/70 hover:scale-105'
           }`}
         >
-          {isDone && <Check className="w-2.5 h-2.5 stroke-[2.5]" />}
+          {isDone && <Check className="w-2.5 h-2.5 stroke-[3]" />}
         </button>
 
         {/* Task Title (Fraunces serif) */}
         <div className="flex-1 min-w-0">
           <h4
-            className={`font-display text-[14px] font-normal leading-snug tracking-tight transition-colors duration-150 ${
+            className={`font-display text-[15px] font-normal leading-snug tracking-tight transition-all duration-150 ${
               isDone
-                ? 'line-through text-ink-muted/80'
+                ? 'line-through text-ink-muted'
                 : 'text-ink group-hover:text-white'
             }`}
           >
@@ -155,8 +155,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         </div>
       </div>
 
-      {/* 3. Bottom Row: Progressive Disclosure on Hover */}
-      <div className="flex items-center justify-between pt-0.5 min-h-[18px]">
+      {/* 3. Bottom Row: Progressive Disclosure on Hover (Secondary metadata & actions) */}
+      <div className="flex items-center justify-between pt-0.5 min-h-[22px]">
         {/* Left: Secondary metadata chips (reveal on hover/focus over 150ms ease) */}
         <div
           className={`flex items-center gap-1.5 flex-wrap transition-opacity duration-150 ease-out ${
@@ -168,23 +168,23 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           {/* Channel Tag chip */}
           {linkedChannel && (
             <span
-              className="inline-flex items-center gap-1 text-[9.5px] font-mono px-1.5 py-0.5 rounded-[5px] border"
+              className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded-[6px] border"
               style={{
-                backgroundColor: `${linkedChannel.color}15`,
-                borderColor: `${linkedChannel.color}35`,
+                backgroundColor: `${linkedChannel.color}18`,
+                borderColor: `${linkedChannel.color}45`,
                 color: linkedChannel.color,
               }}
               title={`Channel: #${linkedChannel.name}`}
             >
               <Hash className="w-2.5 h-2.5 shrink-0" />
-              <span className="truncate max-w-[80px]">{linkedChannel.name}</span>
+              <span className="truncate max-w-[85px]">{linkedChannel.name}</span>
             </span>
           )}
 
           {/* Subtask count pill */}
           {totalSubtasks > 0 && (
             <span
-              className="inline-flex items-center gap-1 text-[9.5px] font-mono text-ink-muted bg-canvas/60 border border-hairline/60 px-1.5 py-0.5 rounded-[5px]"
+              className="inline-flex items-center gap-1 text-[10px] font-mono text-ink-muted bg-canvas/80 border border-hairline px-1.5 py-0.5 rounded-[6px]"
               title={`${completedSubtasks} of ${totalSubtasks} subtasks completed`}
             >
               <CheckSquare className="w-2.5 h-2.5 text-ink-muted" />
@@ -198,7 +198,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           {hasNotes && (
             <span
               title={task.notes || `${task.notesCount || 1} notes`}
-              className="inline-flex items-center gap-0.5 text-[9.5px] font-mono text-ink-muted hover:text-ink transition-colors"
+              className="inline-flex items-center gap-0.5 text-[10px] font-mono text-ink-muted hover:text-ink transition-colors"
             >
               <MessageSquare className="w-2.5 h-2.5 text-ink-muted" />
               {task.notesCount && task.notesCount > 1 ? (
@@ -210,11 +210,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           {/* Linked Goal Pill */}
           {linkedGoal && (
             <span
-              className="inline-flex items-center gap-1 text-[9.5px] font-mono text-ink-muted bg-canvas/60 border border-hairline/60 px-1.5 py-0.5 rounded-full"
+              className="inline-flex items-center gap-1 text-[10px] font-mono text-ink-muted bg-canvas/80 border border-hairline px-1.5 py-0.5 rounded-full"
               title={`Goal: ${linkedGoal.title}`}
             >
               <Target className="w-2.5 h-2.5 text-accent shrink-0" />
-              <span className="truncate max-w-[70px]">{linkedGoal.title}</span>
+              <span className="truncate max-w-[75px]">{linkedGoal.title}</span>
             </span>
           )}
 
