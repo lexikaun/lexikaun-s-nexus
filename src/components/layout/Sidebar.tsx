@@ -9,13 +9,8 @@ import {
   Settings,
   PanelLeftClose,
   PanelLeft,
-  Sunrise,
-  Sunset,
-  Sparkles,
-  ChevronDown,
   Sliders,
 } from 'lucide-react';
-import { Reveal } from '../ui/Reveal';
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
@@ -25,21 +20,9 @@ export const Sidebar: React.FC = () => {
     return saved !== null ? JSON.parse(saved) : false;
   });
 
-  // Accordion drawer states for Global Rituals
-  const [isDailyRitualsOpen, setIsDailyRitualsOpen] = useState(true);
-  const [isWeeklyRitualsOpen, setIsWeeklyRitualsOpen] = useState(true);
-
   useEffect(() => {
     localStorage.setItem('lexikaun_sidebar_collapsed', JSON.stringify(collapsed));
   }, [collapsed]);
-
-  const handleTriggerAiRitual = (promptText: string) => {
-    window.dispatchEvent(
-      new CustomEvent('lexikaun-trigger-ai-ritual', {
-        detail: { prompt: promptText },
-      })
-    );
-  };
 
   const handleGoToToday = () => {
     if (location.pathname !== '/home') {
@@ -67,32 +50,6 @@ export const Sidebar: React.FC = () => {
       label: 'Focus',
       icon: Zap,
       onClick: handleGoToFocus,
-    },
-  ];
-
-  // Daily Rituals
-  const dailyRituals = [
-    {
-      label: 'Daily Planning',
-      icon: Sunrise,
-      prompt:
-        "Let's do my Daily Planning. Review yesterday's unfinished items, evaluate today's workload across work and music, and help me set my top 3 focus priorities.",
-    },
-    {
-      label: 'Daily Shutdown',
-      icon: Sunset,
-      prompt:
-        "Let's do my Daily Shutdown. Summarize my completed tasks and music sessions from today, log a daily reflection, and reschedule any unfinished items to tomorrow.",
-    },
-  ];
-
-  // Weekly Rituals
-  const weeklyRituals = [
-    {
-      label: 'Weekly Review',
-      icon: Sparkles,
-      prompt:
-        "Let's do my Weekly Review. Analyze all completed tasks, music sessions, and habit consistency over the last 7 days, and outline key priorities for next week.",
     },
   ];
 
@@ -182,88 +139,6 @@ export const Sidebar: React.FC = () => {
               </NavLink>
             );
           })}
-        </div>
-
-        {/* Global Daily Rituals Drawer */}
-        <div className="space-y-1">
-          <div
-            onClick={() => !collapsed && setIsDailyRitualsOpen(!isDailyRitualsOpen)}
-            className={`flex items-center justify-between px-2.5 pb-1 text-[10px] uppercase font-mono tracking-wider text-ink-muted cursor-pointer group ${
-              collapsed ? 'justify-center' : ''
-            }`}
-          >
-            <span>{!collapsed ? 'Daily Rituals' : '•'}</span>
-            {!collapsed && (
-              <ChevronDown
-                className={`w-3 h-3 text-ink-muted group-hover:text-ink transition-transform duration-200 ${
-                  isDailyRitualsOpen ? 'rotate-0' : '-rotate-90'
-                }`}
-              />
-            )}
-          </div>
-
-          <Reveal isOpen={collapsed || isDailyRitualsOpen}>
-            <div className="space-y-0.5">
-              {dailyRituals.map((r) => {
-                const Icon = r.icon;
-                return (
-                  <button
-                    key={r.label}
-                    type="button"
-                    onClick={() => handleTriggerAiRitual(r.prompt)}
-                    title={collapsed ? r.label : undefined}
-                    className={`w-full flex items-center rounded-[10px] text-xs font-sans text-ink-muted hover:text-ink hover:bg-surface transition-all duration-150 cursor-pointer group ${
-                      collapsed ? 'justify-center h-8' : 'gap-2.5 px-2.5 py-1.5 text-left'
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5 shrink-0 text-accent group-hover:scale-110 transition-transform" />
-                    {!collapsed && <span className="truncate">{r.label}</span>}
-                  </button>
-                );
-              })}
-            </div>
-          </Reveal>
-        </div>
-
-        {/* Global Weekly Rituals Drawer */}
-        <div className="space-y-1">
-          <div
-            onClick={() => !collapsed && setIsWeeklyRitualsOpen(!isWeeklyRitualsOpen)}
-            className={`flex items-center justify-between px-2.5 pb-1 text-[10px] uppercase font-mono tracking-wider text-ink-muted cursor-pointer group ${
-              collapsed ? 'justify-center' : ''
-            }`}
-          >
-            <span>{!collapsed ? 'Weekly Rituals' : '•'}</span>
-            {!collapsed && (
-              <ChevronDown
-                className={`w-3 h-3 text-ink-muted group-hover:text-ink transition-transform duration-200 ${
-                  isWeeklyRitualsOpen ? 'rotate-0' : '-rotate-90'
-                }`}
-              />
-            )}
-          </div>
-
-          <Reveal isOpen={collapsed || isWeeklyRitualsOpen}>
-            <div className="space-y-0.5">
-              {weeklyRituals.map((r) => {
-                const Icon = r.icon;
-                return (
-                  <button
-                    key={r.label}
-                    type="button"
-                    onClick={() => handleTriggerAiRitual(r.prompt)}
-                    title={collapsed ? r.label : undefined}
-                    className={`w-full flex items-center rounded-[10px] text-xs font-sans text-ink-muted hover:text-ink hover:bg-surface transition-all duration-150 cursor-pointer group ${
-                      collapsed ? 'justify-center h-8' : 'gap-2.5 px-2.5 py-1.5 text-left'
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5 shrink-0 text-accent group-hover:scale-110 transition-transform" />
-                    {!collapsed && <span className="truncate">{r.label}</span>}
-                  </button>
-                );
-              })}
-            </div>
-          </Reveal>
         </div>
 
         {/* Music Studio (Untouched) */}
