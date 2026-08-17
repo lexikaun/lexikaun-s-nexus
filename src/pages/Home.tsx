@@ -3,23 +3,16 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
-  PanelRightClose,
   Filter,
-  Layers,
-  LayoutGrid,
-  List,
-  Clock,
   Inbox,
   X,
   ArrowRight,
-  Plus,
-  Hash,
 } from 'lucide-react';
 import { DayColumn } from '../components/home/DayColumn';
 import { DayTimelinePanel } from '../components/home/DayTimelinePanel';
 import { TaskScheduleModal } from '../components/home/TaskScheduleModal';
 import { TaskCard } from '../components/home/TaskCard';
-import { useAuth } from '../context/useAuth';
+import { useAuth } from '../context/AuthContext';
 import {
   subscribeToTasks,
   subscribeToGoals,
@@ -32,8 +25,6 @@ import {
 } from '../services/db';
 import { expandRecurringTask } from '../utils/recurrence';
 import { Task, Goal, Channel } from '../types';
-
-export type ViewMode = 'board' | 'list';
 
 export const Home: React.FC = () => {
   const { user } = useAuth();
@@ -57,7 +48,7 @@ export const Home: React.FC = () => {
     return d;
   });
 
-  // Controls which day column has its quick-add open externally (e.g. from timeline click)
+  // Controls which day column has its quick-add open externally
   const [activeAddingDate, setActiveAddingDate] = useState<string | null>(null);
 
   // Selected task for click-based detail/reschedule modal
@@ -66,15 +57,12 @@ export const Home: React.FC = () => {
   // Number of visible day columns
   const visibleDaysCount = 4;
 
-  // View Mode: Board vs List
-  const [viewMode, setViewMode] = useState<ViewMode>('board');
-
   // Filter State
   const [selectedChannelFilter, setSelectedChannelFilter] = useState<string>('all');
   const [showFilterDropdown, setShowFilterDropdown] = useState<boolean>(false);
 
-  // Timeline Panel collapsible toggle
-  const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(true);
+  // Timeline Panel collapsible drawer toggle (defaults to false for clean focus)
+  const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
 
   // Backlog Drawer Toggle
   const [isBacklogOpen, setIsBacklogOpen] = useState<boolean>(false);
@@ -91,20 +79,28 @@ export const Home: React.FC = () => {
       setChannels(loadedChannels);
     });
 
-    // Listen for custom backlog triggers from Sidebar
-    const handleRitualEvent = (e: Event) => {
-      const customEvent = e as CustomEvent<{ ritual: string }>;
-      const ritual = customEvent.detail?.ritual;
-      if (ritual === 'backlog') setIsBacklogOpen(true);
+    // Listen for custom events from Sidebar
+    const handleCustomEvents = (e: Event) => {
+      const customEvent = e as CustomEvent<{ ritual?: string; prompt?: string }>;
+      if (customEvent.detail?.ritual === 'backlog') setIsBacklogOpen(true);
     };
 
-    window.addEventListener('lexikaun-trigger-ritual', handleRitualEvent);
+    const handleJumpToday = () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      setStartDate(today);
+      setSelectedCalendarDate(today);
+    };
+
+    window.addEventListener('lexikaun-trigger-ritual', handleCustomEvents);
+    window.addEventListener('lexikaun-jump-today', handleJumpToday);
 
     return () => {
       unsubTasks();
       unsubGoals();
       unsubChannels();
-      window.removeEventListener('lexikaun-trigger-ritual', handleRitualEvent);
+      window.removeEventListener('lexikaun-trigger-ritual', handleCustomEvents);
+      window.removeEventListener('lexikaun-jump-today', handleJumpToday);
     };
   }, [userId]);
 
@@ -185,7 +181,7 @@ export const Home: React.FC = () => {
     return list;
   }, [filteredRawTasks, selectedDateStr]);
 
-  // Backlog tasks (unscheduled / undated or holding)
+  // Backlog tasks
   const backlogTasks = useMemo(() => {
     return rawTasks.filter((t) => !t.date || t.date === '' || t.status === 'rescheduled');
   }, [rawTasks]);
@@ -241,7 +237,7 @@ export const Home: React.FC = () => {
   };
 
   // Create new channel inline
-  const handleCreateChannel = async (name: string, color = '#ef4444'): Promise<string> => {
+  const handleCreateChannel = async (name: string, color = '#D98E4A'): Promise<string> => {
     const newChan: Channel = {
       id: 'chan_' + Date.now(),
       name,
@@ -252,7 +248,7 @@ export const Home: React.FC = () => {
     return newChan.id;
   };
 
-  // Update existing task from Schedule/Detail modal
+  // Update existing task
   const handleSaveTaskModal = async (updatedTask: Task) => {
     const realId = updatedTask.id.includes('_rec_')
       ? updatedTask.id.split('_rec_')[0]
@@ -295,14 +291,15 @@ export const Home: React.FC = () => {
   // Toggle task completion
   const handleToggleComplete = async (task: Task) => {
     const realId = task.id.includes('_rec_') ? task.id.split('_rec_')[0] : task.id;
-    const nextStatus = task.status === 'completed' ? 'planned' : 'completed';
+    const nextStatus = task.status === 'completed' || task.done === true ? 'planned' : 'completed';
 
     setRawTasks((prev) =>
-      prev.map((t) => (t.id === realId ? { ...t, status: nextStatus } : t))
+      prev.map((t) => (t.id === realId ? { ...t, status: nextStatus, done: nextStatus === 'completed' } : t))
     );
 
     await updateTask(userId, realId, {
       status: nextStatus,
+      done: nextStatus === 'completed',
       completedAt: nextStatus === 'completed' ? Date.now() : undefined,
     });
   };
@@ -321,7 +318,7 @@ export const Home: React.FC = () => {
     await updateTask(userId, taskId, { date: newDate });
   };
 
-  // Date range title for header
+  // Date range title for header in IBM Plex Mono
   const firstDate = visibleDates[0];
   const lastDate = visibleDates[visibleDates.length - 1];
   const dateRangeLabel =
@@ -348,48 +345,48 @@ export const Home: React.FC = () => {
   const activeChannel = channels.find((c) => c.id === selectedChannelFilter);
 
   return (
-    <div className="w-full h-full flex flex-col min-h-0 bg-bg-main overflow-hidden select-none">
-      {/* 1. Sunsama Clean Top Bar with Filter & View Mode Switcher */}
-      <header className="h-12 border-b border-border-main/50 px-4 flex items-center justify-between shrink-0 bg-bg-main">
-        {/* Left: Navigation Controls & Date Range */}
+    <div className="w-full h-full flex flex-col min-h-0 bg-canvas text-ink overflow-hidden select-none">
+      {/* 1. Minimalist Top Bar Controls (Phase 6) */}
+      <header className="h-12 border-b border-hairline px-4 flex items-center justify-between shrink-0 bg-canvas">
+        {/* Left / Center: Date Navigation & Date Range in IBM Plex Mono */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 bg-surface/50 p-0.5 rounded-lg hairline-border">
+          <div className="flex items-center gap-1 bg-surface p-0.5 rounded-[8px] border border-hairline shadow-sm">
             <button
               onClick={() => handleShiftDays(-1)}
               title="Previous day"
-              className="p-1.5 rounded-md hover:bg-surface text-text-secondary hover:text-text-main transition-colors cursor-pointer"
+              className="p-1 rounded-md hover:bg-surface-hover text-ink-muted hover:text-ink transition-colors cursor-pointer"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={handleGoToToday}
-              className="px-2.5 py-1 rounded-md text-xs font-mono font-medium hover:bg-surface text-text-main transition-colors cursor-pointer"
+              className="px-2.5 py-0.5 rounded-md text-xs font-mono font-medium hover:bg-surface-hover text-ink transition-colors cursor-pointer"
             >
               Today
             </button>
             <button
               onClick={() => handleShiftDays(1)}
               title="Next day"
-              className="p-1.5 rounded-md hover:bg-surface text-text-secondary hover:text-text-main transition-colors cursor-pointer"
+              className="p-1 rounded-md hover:bg-surface-hover text-ink-muted hover:text-ink transition-colors cursor-pointer"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          <span className="text-xs font-mono font-medium text-text-secondary hidden sm:inline-block">
+          <span className="font-mono text-xs text-ink-muted tracking-tight hidden sm:inline-block">
             {dateRangeLabel}
           </span>
         </div>
 
-        {/* Center/Right: Filter, View Switcher, Timeline Panel Toggle */}
+        {/* Right: Quiet Filter & Calendars Toggle */}
         <div className="flex items-center gap-2">
-          {/* Channel / Tag Filter */}
+          {/* Quiet Channel / Tag Filter */}
           <div className="relative">
             <button
               onClick={() => setShowFilterDropdown(!showFilterDropdown)}
               className={`px-2.5 py-1 rounded-[8px] transition-all cursor-pointer flex items-center gap-1.5 text-xs font-mono border ${
                 selectedChannelFilter !== 'all'
-                  ? 'bg-accent/15 border-accent/40 text-accent font-medium'
+                  ? 'bg-accent/15 border-accent/40 text-accent font-medium shadow-sm'
                   : 'bg-surface border-hairline text-ink-muted hover:text-ink hover:bg-surface-hover'
               }`}
             >
@@ -432,131 +429,62 @@ export const Home: React.FC = () => {
                       className="w-2 h-2 rounded-full shrink-0"
                       style={{ backgroundColor: c.color }}
                     />
-                    <span className="truncate">#{c.name}</span>
+                    <span className="truncate font-mono">#{c.name}</span>
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          {/* View Mode Toggle: Board vs List */}
-          <div className="flex items-center bg-surface p-0.5 rounded-[8px] border border-hairline text-xs font-mono">
-            <button
-              onClick={() => setViewMode('board')}
-              title="Board View"
-              className={`p-1 px-2 rounded-[6px] transition-all cursor-pointer flex items-center gap-1 ${
-                viewMode === 'board'
-                  ? 'bg-canvas text-ink font-medium shadow-sm'
-                  : 'text-ink-muted hover:text-ink'
-              }`}
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Board</span>
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              title="List View"
-              className={`p-1 px-2 rounded-[6px] transition-all cursor-pointer flex items-center gap-1 ${
-                viewMode === 'list'
-                  ? 'bg-canvas text-ink font-medium shadow-sm'
-                  : 'text-ink-muted hover:text-ink'
-              }`}
-            >
-              <List className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">List</span>
-            </button>
-          </div>
-
-          <div className="h-4 w-px bg-hairline" />
-
-          {/* Right: Collapsible Timeline Toggle */}
+          {/* Calendars Toggle Button (Active state highlighted in warm amber) */}
           <button
             onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-            title={isCalendarOpen ? 'Hide timeline panel' : 'Show timeline panel'}
-            className={`p-1.5 px-2.5 rounded-[8px] transition-all cursor-pointer flex items-center gap-1.5 text-xs font-mono ${
+            title={isCalendarOpen ? 'Hide timeline schedule' : 'Show timeline schedule'}
+            className={`p-1.5 px-2.5 rounded-[8px] transition-all cursor-pointer flex items-center gap-1.5 text-xs font-mono border ${
               isCalendarOpen
-                ? 'bg-surface border border-hairline text-accent font-medium shadow-sm'
-                : 'hover:bg-surface text-ink-muted hover:text-ink border border-transparent'
+                ? 'bg-accent/15 border-accent/40 text-accent font-medium shadow-sm'
+                : 'bg-surface border-hairline text-ink-muted hover:text-ink hover:bg-surface-hover'
             }`}
           >
-            {isCalendarOpen ? (
-              <PanelRightClose className="w-3.5 h-3.5 text-accent" />
-            ) : (
-              <Calendar className="w-3.5 h-3.5" />
-            )}
-            <span>Timeline</span>
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Calendars</span>
           </button>
         </div>
       </header>
 
-      {/* Main Multi-Region Body: Day Columns + Collapsible Vertical Timeline Panel */}
+      {/* Main Multi-Region Body: Multi-Day Stream Columns */}
       <div className="flex-1 flex min-h-0 overflow-hidden relative">
-        {/* Central Multi-Day Content (Board or List View) */}
-        {viewMode === 'board' ? (
-          <main className="flex-1 flex overflow-x-auto overflow-y-hidden min-h-0 divide-x divide-border-main/30">
-            {visibleDates.map((date) => {
-              const dStr = date.toISOString().split('T')[0];
-              const tasksForDay = expandedTasksByDate[dStr] || [];
+        <main className="flex-1 flex overflow-x-auto overflow-y-hidden min-h-0 divide-x divide-hairline/40">
+          {visibleDates.map((date) => {
+            const dStr = date.toISOString().split('T')[0];
+            const tasksForDay = expandedTasksByDate[dStr] || [];
 
-              return (
-                <DayColumn
-                  key={dStr}
-                  date={date}
-                  isToday={isToday(date)}
-                  tasks={tasksForDay}
-                  goals={goals}
-                  channels={channels}
-                  isAddingExternal={activeAddingDate === dStr}
-                  onCloseAddingExternal={() => setActiveAddingDate(null)}
-                  onSaveNewTask={handleSaveNewTask}
-                  onCreateGoal={handleCreateGoal}
-                  onCreateChannel={handleCreateChannel}
-                  onToggleComplete={handleToggleComplete}
-                  onDeleteTask={handleDeleteTask}
-                  onSelectTask={(task) => {
-                    setSelectedTaskForEdit(task);
-                    setSelectedCalendarDate(date);
-                  }}
-                  onQuickRescheduleTomorrow={handleQuickRescheduleTomorrow}
-                />
-              );
-            })}
-          </main>
-        ) : (
-          /* Single Consolidated List View */
-          <main className="flex-1 overflow-y-auto p-6 space-y-6 max-w-3xl mx-auto">
-            {visibleDates.map((date) => {
-              const dStr = date.toISOString().split('T')[0];
-              const tasksForDay = expandedTasksByDate[dStr] || [];
-              const dayName = date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+            return (
+              <DayColumn
+                key={dStr}
+                date={date}
+                isToday={isToday(date)}
+                tasks={tasksForDay}
+                goals={goals}
+                channels={channels}
+                isAddingExternal={activeAddingDate === dStr}
+                onCloseAddingExternal={() => setActiveAddingDate(null)}
+                onSaveNewTask={handleSaveNewTask}
+                onCreateGoal={handleCreateGoal}
+                onCreateChannel={handleCreateChannel}
+                onToggleComplete={handleToggleComplete}
+                onDeleteTask={handleDeleteTask}
+                onSelectTask={(task) => {
+                  setSelectedTaskForEdit(task);
+                  setSelectedCalendarDate(date);
+                }}
+                onQuickRescheduleTomorrow={handleQuickRescheduleTomorrow}
+              />
+            );
+          })}
+        </main>
 
-              return (
-                <div key={dStr} className="space-y-2">
-                  <h3 className="text-xs font-semibold uppercase font-mono tracking-wider text-text-secondary border-b border-border-main/40 pb-1 flex items-center justify-between">
-                    <span>{dayName}</span>
-                    <span>{tasksForDay.length} tasks</span>
-                  </h3>
-                  <div className="space-y-1.5">
-                    {tasksForDay.map((task) => (
-                      <TaskCard
-                        key={task.id}
-                        task={task}
-                        goals={goals}
-                        channels={channels}
-                        onClick={(t) => setSelectedTaskForEdit(t)}
-                        onToggleComplete={handleToggleComplete}
-                        onDelete={handleDeleteTask}
-                        onQuickRescheduleTomorrow={handleQuickRescheduleTomorrow}
-                      />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </main>
-        )}
-
-        {/* Right Collapsible Vertical Hourly Timeline Panel */}
+        {/* Slide-In Day Timeline Panel (Phase 5) */}
         <DayTimelinePanel
           isOpen={isCalendarOpen}
           onClose={() => setIsCalendarOpen(false)}
@@ -577,17 +505,17 @@ export const Home: React.FC = () => {
           onQuickAdd={() => setActiveAddingDate(selectedDateStr)}
         />
 
-        {/* Collapsible Backlog Drawer (holding area for unscheduled tasks) */}
+        {/* Collapsible Backlog Drawer */}
         {isBacklogOpen && (
-          <div className="absolute inset-y-0 left-0 w-80 bg-bg-main border-r border-border-main/70 shadow-2xl z-30 flex flex-col animate-in slide-in-from-left duration-200">
-            <div className="p-3.5 border-b border-border-main/50 flex items-center justify-between bg-surface/30">
-              <div className="flex items-center gap-2 text-xs font-mono font-medium text-text-main">
-                <Inbox className="w-4 h-4 text-red-main" />
+          <div className="absolute inset-y-0 left-0 w-80 bg-canvas border-r border-hairline shadow-[0_16px_48px_rgba(0,0,0,0.45)] z-30 flex flex-col animate-in slide-in-from-left duration-200">
+            <div className="p-3.5 border-b border-hairline flex items-center justify-between bg-surface/30">
+              <div className="flex items-center gap-2 text-xs font-mono font-medium text-ink">
+                <Inbox className="w-4 h-4 text-accent" />
                 <span>Backlog & Unscheduled</span>
               </div>
               <button
                 onClick={() => setIsBacklogOpen(false)}
-                className="p-1 rounded-md hover:bg-surface text-text-secondary hover:text-text-main cursor-pointer"
+                className="p-1 rounded-lg hover:bg-surface text-ink-muted hover:text-ink cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -595,9 +523,9 @@ export const Home: React.FC = () => {
 
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
               {backlogTasks.length === 0 ? (
-                <div className="p-6 text-center text-text-secondary text-xs border border-dashed border-border-main/40 rounded-xl space-y-1">
+                <div className="p-6 text-center text-ink-muted text-xs border border-dashed border-hairline rounded-xl space-y-1">
                   <p>Backlog is clear</p>
-                  <p className="text-[10px] text-text-secondary/60">
+                  <p className="text-[10px] text-ink-muted/60 font-mono">
                     Tasks without dates appear here as holding items.
                   </p>
                 </div>
@@ -605,24 +533,24 @@ export const Home: React.FC = () => {
                 backlogTasks.map((t) => (
                   <div
                     key={t.id}
-                    className="p-2.5 rounded-lg bg-surface hairline-border space-y-2 group"
+                    className="p-2.5 rounded-xl bg-surface border border-hairline space-y-2 group shadow-sm"
                   >
                     <div className="flex items-center justify-between gap-1">
-                      <span className="text-xs font-medium text-text-main truncate flex-1">
+                      <span className="text-xs font-display font-medium text-ink truncate flex-1">
                         {t.title}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between pt-1 border-t border-border-main/30">
+                    <div className="flex items-center justify-between pt-1 border-t border-hairline/50">
                       <button
                         onClick={() => handleRescheduleFromRitual(t.id, new Date().toISOString().split('T')[0])}
-                        className="text-[10px] font-mono text-red-main hover:underline flex items-center gap-1 cursor-pointer"
+                        className="text-[10px] font-mono text-accent hover:underline flex items-center gap-1 cursor-pointer"
                       >
                         <span>Schedule Today</span>
                         <ArrowRight className="w-3 h-3" />
                       </button>
                       <button
                         onClick={() => handleDeleteTask(t.id)}
-                        className="text-[10px] text-text-secondary hover:text-red-main cursor-pointer"
+                        className="text-[10px] text-ink-muted hover:text-red-400 cursor-pointer"
                       >
                         Delete
                       </button>
