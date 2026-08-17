@@ -1,11 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, Send, Sparkles } from 'lucide-react';
 import { Content } from '@google/genai';
 import { chatWithLexikaun } from '../../services/ai';
-import { usePlanner } from '../../context/PlannerContext';
-import { useHabits } from '../../context/HabitContext';
-import { useMusic } from '../../context/MusicContext';
-import { FloatingPanel } from '../ui/FloatingPanel';
+import { createTask, createGoal, subscribeToTasks, subscribeToGoals } from '../../services/db';
+import { useAuth } from '../../context/AuthContext';
+import { Task, Goal } from '../../types';
 
 interface LexikaunAssistantProps {
   isOpen: boolean;
@@ -18,14 +17,25 @@ export const LexikaunAssistant: React.FC<LexikaunAssistantProps> = ({
   onClose,
   initialPrompt = '',
 }) => {
+  const { user } = useAuth();
+  const userId = user?.uid || 'local-producer-01';
+
   const [messages, setMessages] = useState<Content[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { goals, currentTask, addGoal, scheduleTask } = usePlanner();
-  const { addHabit } = useHabits();
-  const { playBeat, beats } = useMusic();
+  useEffect(() => {
+    if (!isOpen) return;
+    const unsubTasks = subscribeToTasks(userId, setTasks);
+    const unsubGoals = subscribeToGoals(userId, setGoals);
+    return () => {
+      unsubTasks();
+      unsubGoals();
+    };
+  }, [isOpen, userId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -50,7 +60,7 @@ export const LexikaunAssistant: React.FC<LexikaunAssistantProps> = ({
     setIsTyping(true);
 
     try {
-      const contextData = { goals, currentTask };
+      const contextData = { goals, currentTask: tasks[0] || null };
       const response = await chatWithLexikaun(newMessages, promptText, contextData);
 
       const responseContent = response.candidates?.[0]?.content;
@@ -105,7 +115,7 @@ export const LexikaunAssistant: React.FC<LexikaunAssistantProps> = ({
     setIsTyping(true);
 
     try {
-      const contextData = { goals, currentTask };
+      const contextData = { goals, currentTask: tasks[0] || null };
       const response = await chatWithLexikaun(newMessages, userText, contextData);
 
       const responseContent = response.candidates?.[0]?.content;
@@ -149,39 +159,31 @@ export const LexikaunAssistant: React.FC<LexikaunAssistantProps> = ({
   const handleToolCall = async (name: string, args: any) => {
     switch (name) {
       case 'createGoal':
-        await addGoal({
+        await createGoal(userId, {
+          id: 'goal_' + Date.now(),
+          userId,
           title: args.title,
-          category: args.category,
-          timeframe: 'monthly',
+          priority: 'medium',
+          status: 'active',
+          createdAt: Date.now(),
         });
         break;
       case 'scheduleTask':
-        await scheduleTask({
+        await createTask(userId, {
+          id: 'task_' + Date.now(),
+          userId,
           title: args.title,
-          startTime: args.startTime,
-          endTime: args.endTime,
-          date: args.date,
-          status: 'pending',
-          associatedGoalId: args.associatedGoalId,
+          startTime: args.startTime || '',
+          endTime: args.endTime || '',
+          date: args.date || new Date().toISOString().split('T')[0],
+          status: 'planned',
+          goalId: args.associatedGoalId,
+          priority: 'medium',
+          createdAt: Date.now(),
         });
-        break;
-      case 'createHabit':
-        await addHabit({
-          name: args.name,
-          frequency: args.frequency,
-          preferredTime: args.preferredTime,
-        });
-        break;
-      case 'playMusic':
-        const match = beats.find(
-          (b) =>
-            b.genre?.toLowerCase().includes(args.query.toLowerCase()) ||
-            b.title.toLowerCase().includes(args.query.toLowerCase())
-        );
-        if (match) playBeat(match);
         break;
       default:
-        console.warn('Unknown tool:', name);
+        console.warn('Tool execution:', name, args);
     }
   };
 
