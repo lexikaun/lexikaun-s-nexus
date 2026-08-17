@@ -16,7 +16,7 @@ import {
   Hash,
 } from 'lucide-react';
 import { DayColumn } from '../components/home/DayColumn';
-import { CalendarPanel } from '../components/home/CalendarPanel';
+import { DayTimelinePanel } from '../components/home/DayTimelinePanel';
 import { TaskScheduleModal } from '../components/home/TaskScheduleModal';
 import { TaskCard } from '../components/home/TaskCard';
 import { useAuth } from '../context/useAuth';
@@ -387,10 +387,10 @@ export const Home: React.FC = () => {
           <div className="relative">
             <button
               onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-              className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-mono border ${
+              className={`px-2.5 py-1 rounded-[8px] transition-all cursor-pointer flex items-center gap-1.5 text-xs font-mono border ${
                 selectedChannelFilter !== 'all'
-                  ? 'bg-red-main/15 border-red-main/40 text-text-main'
-                  : 'bg-surface/50 border-border-main/50 text-text-secondary hover:text-text-main hover:bg-surface'
+                  ? 'bg-accent/15 border-accent/40 text-accent font-medium'
+                  : 'bg-surface border-hairline text-ink-muted hover:text-ink hover:bg-surface-hover'
               }`}
             >
               <Filter className="w-3.5 h-3.5" />
@@ -398,8 +398,8 @@ export const Home: React.FC = () => {
             </button>
 
             {showFilterDropdown && (
-              <div className="absolute right-0 top-full mt-1.5 w-48 p-1.5 bg-surface border border-border-main/70 rounded-xl shadow-2xl z-40 space-y-1">
-                <div className="text-[9px] uppercase font-mono text-text-secondary px-2 py-1">
+              <div className="absolute right-0 top-full mt-1.5 w-48 p-1.5 bg-surface border border-hairline rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.45)] z-40 space-y-1">
+                <div className="text-[9px] uppercase font-mono text-ink-muted px-2 py-1">
                   Filter by Channel
                 </div>
                 <button
@@ -409,8 +409,8 @@ export const Home: React.FC = () => {
                   }}
                   className={`w-full text-left px-2 py-1 rounded-lg text-xs transition-colors cursor-pointer flex items-center justify-between ${
                     selectedChannelFilter === 'all'
-                      ? 'bg-red-main/15 text-red-main font-medium'
-                      : 'text-text-main hover:bg-bg-main'
+                      ? 'bg-accent/15 text-accent font-medium'
+                      : 'text-ink hover:bg-canvas'
                   }`}
                 >
                   <span>All Channels</span>
@@ -424,8 +424,8 @@ export const Home: React.FC = () => {
                     }}
                     className={`w-full text-left px-2 py-1 rounded-lg text-xs transition-colors cursor-pointer flex items-center gap-1.5 ${
                       selectedChannelFilter === c.id
-                        ? 'bg-red-main/15 text-red-main font-medium'
-                        : 'text-text-main hover:bg-bg-main'
+                        ? 'bg-accent/15 text-accent font-medium'
+                        : 'text-ink hover:bg-canvas'
                     }`}
                   >
                     <span
@@ -440,14 +440,14 @@ export const Home: React.FC = () => {
           </div>
 
           {/* View Mode Toggle: Board vs List */}
-          <div className="flex items-center bg-surface/50 p-0.5 rounded-lg hairline-border text-xs font-mono">
+          <div className="flex items-center bg-surface p-0.5 rounded-[8px] border border-hairline text-xs font-mono">
             <button
               onClick={() => setViewMode('board')}
               title="Board View"
-              className={`p-1 px-2 rounded-md transition-colors cursor-pointer flex items-center gap-1 ${
+              className={`p-1 px-2 rounded-[6px] transition-all cursor-pointer flex items-center gap-1 ${
                 viewMode === 'board'
-                  ? 'bg-surface text-text-main font-medium shadow-sm'
-                  : 'text-text-secondary hover:text-text-main'
+                  ? 'bg-canvas text-ink font-medium shadow-sm'
+                  : 'text-ink-muted hover:text-ink'
               }`}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
@@ -456,10 +456,10 @@ export const Home: React.FC = () => {
             <button
               onClick={() => setViewMode('list')}
               title="List View"
-              className={`p-1 px-2 rounded-md transition-colors cursor-pointer flex items-center gap-1 ${
+              className={`p-1 px-2 rounded-[6px] transition-all cursor-pointer flex items-center gap-1 ${
                 viewMode === 'list'
-                  ? 'bg-surface text-text-main font-medium shadow-sm'
-                  : 'text-text-secondary hover:text-text-main'
+                  ? 'bg-canvas text-ink font-medium shadow-sm'
+                  : 'text-ink-muted hover:text-ink'
               }`}
             >
               <List className="w-3.5 h-3.5" />
@@ -467,24 +467,24 @@ export const Home: React.FC = () => {
             </button>
           </div>
 
-          <div className="h-4 w-px bg-border-main/50" />
+          <div className="h-4 w-px bg-hairline" />
 
           {/* Right: Collapsible Timeline Toggle */}
           <button
             onClick={() => setIsCalendarOpen(!isCalendarOpen)}
             title={isCalendarOpen ? 'Hide timeline panel' : 'Show timeline panel'}
-            className={`p-1.5 px-2.5 rounded-md transition-colors cursor-pointer flex items-center gap-1.5 text-xs ${
+            className={`p-1.5 px-2.5 rounded-[8px] transition-all cursor-pointer flex items-center gap-1.5 text-xs font-mono ${
               isCalendarOpen
-                ? 'bg-surface hairline-border text-text-main font-medium'
-                : 'hover:bg-surface text-text-secondary hover:text-text-main'
+                ? 'bg-surface border border-hairline text-accent font-medium shadow-sm'
+                : 'hover:bg-surface text-ink-muted hover:text-ink border border-transparent'
             }`}
           >
             {isCalendarOpen ? (
-              <PanelRightClose className="w-3.5 h-3.5 text-red-main" />
+              <PanelRightClose className="w-3.5 h-3.5 text-accent" />
             ) : (
               <Calendar className="w-3.5 h-3.5" />
             )}
-            <span className="text-xs font-mono">Timeline</span>
+            <span>Timeline</span>
           </button>
         </div>
       </header>
@@ -557,7 +557,7 @@ export const Home: React.FC = () => {
         )}
 
         {/* Right Collapsible Vertical Hourly Timeline Panel */}
-        <CalendarPanel
+        <DayTimelinePanel
           isOpen={isCalendarOpen}
           onClose={() => setIsCalendarOpen(false)}
           selectedDate={selectedCalendarDate}
