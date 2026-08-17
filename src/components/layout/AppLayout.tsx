@@ -1,12 +1,31 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, NavLink } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { useAuth } from '../../context/AuthContext';
-import { LogOut } from 'lucide-react';
+import { LexikaunAssistant } from '../ai/LexikaunAssistant';
+import { LogOut, Sparkles } from 'lucide-react';
 
 export const AppLayout: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
+
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [assistantPrompt, setAssistantPrompt] = useState('');
+
+  useEffect(() => {
+    const handleAiRitualEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ prompt: string }>;
+      if (customEvent.detail?.prompt) {
+        setAssistantPrompt(customEvent.detail.prompt);
+        setIsAssistantOpen(true);
+      }
+    };
+
+    window.addEventListener('lexikaun-trigger-ai-ritual', handleAiRitualEvent);
+    return () => {
+      window.removeEventListener('lexikaun-trigger-ai-ritual', handleAiRitualEvent);
+    };
+  }, []);
 
   const getSubNav = () => {
     if (location.pathname.startsWith('/music')) {
@@ -33,13 +52,13 @@ export const AppLayout: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-bg-main text-text-main">
+    <div className="flex h-screen w-full overflow-hidden bg-canvas text-ink">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Header */}
-        <header className="h-14 border-b border-border-main/50 px-6 flex items-center justify-between shrink-0 select-none bg-bg-main">
+        <header className="h-14 border-b border-hairline px-6 flex items-center justify-between shrink-0 select-none bg-canvas">
           <div className="flex items-center gap-6">
-            <span className="text-xs uppercase tracking-wider text-text-secondary font-medium">
+            <span className="font-display text-sm tracking-wider text-ink font-normal">
               {getSectionTitle()}
             </span>
 
@@ -52,10 +71,10 @@ export const AppLayout: React.FC = () => {
                     to={item.path}
                     end={item.path === '/music'}
                     className={({ isActive }) =>
-                      `px-3 py-1 text-xs rounded-md transition-colors ${
+                      `px-3 py-1 text-xs rounded-[8px] font-sans transition-all ${
                         isActive
-                          ? 'text-music-accent bg-surface font-medium'
-                          : 'text-text-secondary hover:text-main'
+                          ? 'text-accent bg-surface border border-hairline font-medium shadow-sm'
+                          : 'text-ink-muted hover:text-ink hover:bg-surface/50'
                       }`
                     }
                   >
@@ -66,18 +85,31 @@ export const AppLayout: React.FC = () => {
             )}
           </div>
 
-          {/* User profile */}
+          {/* Right Header Actions: Ask Lexikaun trigger & User profile */}
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-xs text-text-secondary">
-              <div className="w-6 h-6 rounded-full bg-surface hairline-border flex items-center justify-center text-text-main text-[11px]">
+            <button
+              onClick={() => {
+                setAssistantPrompt('');
+                setIsAssistantOpen(true);
+              }}
+              title="Open AI Assistant"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-surface hover:bg-surface-hover border border-hairline text-ink-muted hover:text-ink text-xs font-sans transition-all cursor-pointer shadow-sm"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-accent" />
+              <span>Ask Lexikaun</span>
+            </button>
+
+            <div className="flex items-center gap-2 text-xs font-sans text-ink-muted">
+              <div className="w-6 h-6 rounded-full bg-surface border border-hairline flex items-center justify-center text-ink text-[11px] font-mono">
                 {user?.displayName ? user.displayName.charAt(0).toUpperCase() : 'P'}
               </div>
-              <span className="max-w-[120px] truncate">{user?.displayName || 'Producer'}</span>
+              <span className="max-w-[120px] truncate text-ink">{user?.displayName || 'Producer'}</span>
             </div>
+
             <button
               onClick={() => logout()}
               title="Sign Out"
-              className="p-1.5 rounded-md hover:bg-surface text-text-secondary hover:text-red-main transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg hover:bg-surface text-ink-muted hover:text-red-400 transition-colors cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -99,7 +131,16 @@ export const AppLayout: React.FC = () => {
           )}
         </main>
       </div>
+
+      {/* Global AI Assistant Drawer */}
+      <LexikaunAssistant
+        isOpen={isAssistantOpen}
+        onClose={() => {
+          setIsAssistantOpen(false);
+          setAssistantPrompt('');
+        }}
+        initialPrompt={assistantPrompt}
+      />
     </div>
   );
 };
-

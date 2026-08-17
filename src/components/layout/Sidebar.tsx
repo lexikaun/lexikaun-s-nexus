@@ -1,41 +1,102 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home,
+  Calendar,
+  Zap,
   Music,
   Search,
   Settings,
   PanelLeftClose,
   PanelLeft,
-  Inbox,
+  Sunrise,
+  Sunset,
+  Sparkles,
+  ChevronDown,
   Sliders,
 } from 'lucide-react';
+import { Reveal } from '../ui/Reveal';
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     const saved = localStorage.getItem('lexikaun_sidebar_collapsed');
     return saved !== null ? JSON.parse(saved) : false;
   });
 
+  // Accordion drawer states for Global Rituals
+  const [isDailyRitualsOpen, setIsDailyRitualsOpen] = useState(true);
+  const [isWeeklyRitualsOpen, setIsWeeklyRitualsOpen] = useState(true);
+
   useEffect(() => {
     localStorage.setItem('lexikaun_sidebar_collapsed', JSON.stringify(collapsed));
   }, [collapsed]);
 
-  const handleOpenBacklog = () => {
-    window.dispatchEvent(new CustomEvent('lexikaun-trigger-ritual', { detail: { ritual: 'backlog' } }));
+  const handleTriggerAiRitual = (promptText: string) => {
+    window.dispatchEvent(
+      new CustomEvent('lexikaun-trigger-ai-ritual', {
+        detail: { prompt: promptText },
+      })
+    );
   };
 
-  const primaryViews = [
-    { to: '/home', label: 'Home Planner', icon: Home },
+  const handleGoToToday = () => {
+    if (location.pathname !== '/home') {
+      navigate('/home?view=today');
+    } else {
+      window.dispatchEvent(new CustomEvent('lexikaun-jump-today'));
+    }
+  };
+
+  const handleGoToFocus = () => {
+    window.dispatchEvent(new CustomEvent('lexikaun-toggle-focus'));
+  };
+
+  // Primary destinations
+  const primaryDestinations = [
+    { to: '/home', label: 'Home', icon: Home },
     {
-      to: '#backlog',
-      label: 'Backlog',
-      icon: Inbox,
-      onClick: handleOpenBacklog,
+      to: '#today',
+      label: 'Today',
+      icon: Calendar,
+      onClick: handleGoToToday,
+    },
+    {
+      to: '#focus',
+      label: 'Focus',
+      icon: Zap,
+      onClick: handleGoToFocus,
     },
   ];
 
+  // Daily Rituals
+  const dailyRituals = [
+    {
+      label: 'Daily Planning',
+      icon: Sunrise,
+      prompt:
+        "Let's do my Daily Planning. Review yesterday's unfinished items, evaluate today's workload across work and music, and help me set my top 3 focus priorities.",
+    },
+    {
+      label: 'Daily Shutdown',
+      icon: Sunset,
+      prompt:
+        "Let's do my Daily Shutdown. Summarize my completed tasks and music sessions from today, log a daily reflection, and reschedule any unfinished items to tomorrow.",
+    },
+  ];
+
+  // Weekly Rituals
+  const weeklyRituals = [
+    {
+      label: 'Weekly Review',
+      icon: Sparkles,
+      prompt:
+        "Let's do my Weekly Review. Analyze all completed tasks, music sessions, and habit consistency over the last 7 days, and outline key priorities for next week.",
+    },
+  ];
+
+  // Music Studio navigation (untouched)
   const musicNavItems = [
     { to: '/music', label: 'Beats & Projects', icon: Music },
     { to: '/music/finder', label: 'Key & BPM Finder', icon: Sliders },
@@ -43,22 +104,22 @@ export const Sidebar: React.FC = () => {
 
   return (
     <aside
-      className={`h-screen flex flex-col bg-bg-main border-r border-border-main/50 transition-all duration-200 ease-in-out shrink-0 select-none ${
+      className={`h-screen flex flex-col bg-canvas border-r border-hairline transition-all duration-200 ease-in-out shrink-0 select-none ${
         collapsed ? 'w-16' : 'w-60'
       }`}
     >
-      {/* Sidebar Header */}
+      {/* 1. Sidebar Header */}
       <div
-        className={`h-12 flex items-center border-b border-border-main/50 px-3.5 ${
+        className={`h-12 flex items-center border-b border-hairline px-3.5 ${
           collapsed ? 'justify-center' : 'justify-between'
         }`}
       >
         {!collapsed && (
-          <div className="flex items-center gap-2.5 pl-1.5 overflow-hidden">
-            <div className="w-5 h-5 rounded bg-surface hairline-border flex items-center justify-center text-[10px] font-mono font-medium text-text-main shrink-0">
+          <div className="flex items-center gap-2.5 pl-1 overflow-hidden">
+            <div className="w-5 h-5 rounded-[6px] bg-surface border border-hairline flex items-center justify-center text-[10px] font-mono font-medium text-accent shrink-0 shadow-sm">
               LX
             </div>
-            <span className="text-xs font-medium tracking-wider uppercase text-text-main truncate">
+            <span className="font-display text-xs font-medium tracking-wider uppercase text-ink truncate">
               Lexikaun
             </span>
           </div>
@@ -66,24 +127,24 @@ export const Sidebar: React.FC = () => {
         <button
           onClick={() => setCollapsed(!collapsed)}
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className="p-1.5 rounded-md hover:bg-surface text-text-secondary hover:text-text-main transition-colors cursor-pointer"
+          className="p-1.5 rounded-lg hover:bg-surface text-ink-muted hover:text-ink transition-colors cursor-pointer"
         >
           {collapsed ? <PanelLeft className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
         </button>
       </div>
 
-      {/* Navigation Sections */}
+      {/* 2. Navigation Sections */}
       <nav className="flex-1 py-3 px-2 space-y-4 overflow-y-auto">
-        {/* 1. Primary Views (Home Planner, Backlog) */}
+        {/* Core Destinations: Home, Today, Focus */}
         <div className="space-y-0.5">
           <div
-            className={`px-2.5 pb-1 text-[10px] uppercase font-mono tracking-wider text-text-secondary ${
+            className={`px-2.5 pb-1 text-[10px] uppercase font-mono tracking-wider text-ink-muted ${
               collapsed ? 'text-center' : ''
             }`}
           >
-            {!collapsed ? 'Views' : '•'}
+            {!collapsed ? 'Workspace' : '•'}
           </div>
-          {primaryViews.map((item) => {
+          {primaryDestinations.map((item) => {
             const Icon = item.icon;
             if (item.onClick) {
               return (
@@ -92,7 +153,7 @@ export const Sidebar: React.FC = () => {
                   type="button"
                   onClick={item.onClick}
                   title={collapsed ? item.label : undefined}
-                  className={`w-full flex items-center rounded-md text-xs font-normal text-text-secondary hover:text-text-main hover:bg-surface/50 transition-colors cursor-pointer ${
+                  className={`w-full flex items-center rounded-[10px] text-xs font-sans text-ink-muted hover:text-ink hover:bg-surface transition-all duration-150 cursor-pointer ${
                     collapsed ? 'justify-center h-8' : 'gap-2.5 px-2.5 py-1.5 text-left'
                   }`}
                 >
@@ -107,26 +168,108 @@ export const Sidebar: React.FC = () => {
                 to={item.to}
                 title={collapsed ? item.label : undefined}
                 className={({ isActive }) =>
-                  `flex items-center rounded-md text-xs font-normal transition-colors cursor-pointer ${
+                  `flex items-center rounded-[10px] text-xs font-sans transition-all duration-150 cursor-pointer ${
                     collapsed ? 'justify-center h-8' : 'gap-2.5 px-2.5 py-1.5'
                   } ${
                     isActive
-                      ? 'text-text-main bg-surface font-medium'
-                      : 'text-text-secondary hover:text-text-main hover:bg-surface/50'
+                      ? 'text-ink bg-surface border border-hairline font-medium shadow-sm'
+                      : 'text-ink-muted hover:text-ink hover:bg-surface'
                   }`
                 }
               >
-                <Icon className="w-3.5 h-3.5 shrink-0" />
+                <Icon className="w-3.5 h-3.5 shrink-0 text-accent" />
                 {!collapsed && <span className="truncate">{item.label}</span>}
               </NavLink>
             );
           })}
         </div>
 
-        {/* 2. Music Studio */}
+        {/* Global Daily Rituals Drawer */}
+        <div className="space-y-1">
+          <div
+            onClick={() => !collapsed && setIsDailyRitualsOpen(!isDailyRitualsOpen)}
+            className={`flex items-center justify-between px-2.5 pb-1 text-[10px] uppercase font-mono tracking-wider text-ink-muted cursor-pointer group ${
+              collapsed ? 'justify-center' : ''
+            }`}
+          >
+            <span>{!collapsed ? 'Daily Rituals' : '•'}</span>
+            {!collapsed && (
+              <ChevronDown
+                className={`w-3 h-3 text-ink-muted group-hover:text-ink transition-transform duration-200 ${
+                  isDailyRitualsOpen ? 'rotate-0' : '-rotate-90'
+                }`}
+              />
+            )}
+          </div>
+
+          <Reveal isOpen={collapsed || isDailyRitualsOpen}>
+            <div className="space-y-0.5">
+              {dailyRituals.map((r) => {
+                const Icon = r.icon;
+                return (
+                  <button
+                    key={r.label}
+                    type="button"
+                    onClick={() => handleTriggerAiRitual(r.prompt)}
+                    title={collapsed ? r.label : undefined}
+                    className={`w-full flex items-center rounded-[10px] text-xs font-sans text-ink-muted hover:text-ink hover:bg-surface transition-all duration-150 cursor-pointer group ${
+                      collapsed ? 'justify-center h-8' : 'gap-2.5 px-2.5 py-1.5 text-left'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5 shrink-0 text-accent group-hover:scale-110 transition-transform" />
+                    {!collapsed && <span className="truncate">{r.label}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </Reveal>
+        </div>
+
+        {/* Global Weekly Rituals Drawer */}
+        <div className="space-y-1">
+          <div
+            onClick={() => !collapsed && setIsWeeklyRitualsOpen(!isWeeklyRitualsOpen)}
+            className={`flex items-center justify-between px-2.5 pb-1 text-[10px] uppercase font-mono tracking-wider text-ink-muted cursor-pointer group ${
+              collapsed ? 'justify-center' : ''
+            }`}
+          >
+            <span>{!collapsed ? 'Weekly Rituals' : '•'}</span>
+            {!collapsed && (
+              <ChevronDown
+                className={`w-3 h-3 text-ink-muted group-hover:text-ink transition-transform duration-200 ${
+                  isWeeklyRitualsOpen ? 'rotate-0' : '-rotate-90'
+                }`}
+              />
+            )}
+          </div>
+
+          <Reveal isOpen={collapsed || isWeeklyRitualsOpen}>
+            <div className="space-y-0.5">
+              {weeklyRituals.map((r) => {
+                const Icon = r.icon;
+                return (
+                  <button
+                    key={r.label}
+                    type="button"
+                    onClick={() => handleTriggerAiRitual(r.prompt)}
+                    title={collapsed ? r.label : undefined}
+                    className={`w-full flex items-center rounded-[10px] text-xs font-sans text-ink-muted hover:text-ink hover:bg-surface transition-all duration-150 cursor-pointer group ${
+                      collapsed ? 'justify-center h-8' : 'gap-2.5 px-2.5 py-1.5 text-left'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5 shrink-0 text-accent group-hover:scale-110 transition-transform" />
+                    {!collapsed && <span className="truncate">{r.label}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </Reveal>
+        </div>
+
+        {/* Music Studio (Untouched) */}
         <div className="space-y-0.5">
           <div
-            className={`px-2.5 pb-1 text-[10px] uppercase font-mono tracking-wider text-music-accent/80 ${
+            className={`px-2.5 pb-1 text-[10px] uppercase font-mono tracking-wider text-accent/90 ${
               collapsed ? 'text-center' : ''
             }`}
           >
@@ -138,34 +281,34 @@ export const Sidebar: React.FC = () => {
               to={item.to}
               title={collapsed ? item.label : undefined}
               className={({ isActive }) =>
-                `flex items-center rounded-md text-xs font-normal transition-colors cursor-pointer ${
+                `flex items-center rounded-[10px] text-xs font-sans transition-all duration-150 cursor-pointer ${
                   collapsed ? 'justify-center h-8' : 'gap-2.5 px-2.5 py-1.5'
                 } ${
                   isActive || (item.to === '/music' && location.pathname === '/music')
-                    ? 'text-music-accent bg-surface font-medium'
-                    : 'text-text-secondary hover:text-music-accent hover:bg-surface/50'
+                    ? 'text-accent bg-surface border border-hairline font-medium shadow-sm'
+                    : 'text-ink-muted hover:text-accent hover:bg-surface'
                 }`
               }
             >
-              <item.icon className="w-3.5 h-3.5 shrink-0" />
+              <item.icon className="w-3.5 h-3.5 shrink-0 text-accent" />
               {!collapsed && <span className="truncate">{item.label}</span>}
             </NavLink>
           ))}
         </div>
       </nav>
 
-      {/* Bottom Utility Navigation */}
-      <div className="p-2 border-t border-border-main/50 space-y-0.5">
+      {/* 3. Bottom Utility Navigation */}
+      <div className="p-2 border-t border-hairline space-y-0.5">
         <NavLink
           to="/search"
           title={collapsed ? 'Search' : undefined}
           className={({ isActive }) =>
-            `flex items-center rounded-md text-xs font-normal transition-colors cursor-pointer ${
+            `flex items-center rounded-[10px] text-xs font-sans transition-all duration-150 cursor-pointer ${
               collapsed ? 'justify-center h-8 w-full' : 'gap-2.5 px-2.5 py-1.5'
             } ${
               isActive
-                ? 'text-text-main bg-surface font-medium'
-                : 'text-text-secondary hover:text-text-main hover:bg-surface/50'
+                ? 'text-ink bg-surface border border-hairline font-medium shadow-sm'
+                : 'text-ink-muted hover:text-ink hover:bg-surface'
             }`
           }
         >
@@ -176,12 +319,12 @@ export const Sidebar: React.FC = () => {
           to="/settings"
           title={collapsed ? 'Settings' : undefined}
           className={({ isActive }) =>
-            `flex items-center rounded-md text-xs font-normal transition-colors cursor-pointer ${
+            `flex items-center rounded-[10px] text-xs font-sans transition-all duration-150 cursor-pointer ${
               collapsed ? 'justify-center h-8 w-full' : 'gap-2.5 px-2.5 py-1.5'
             } ${
               isActive
-                ? 'text-text-main bg-surface font-medium'
-                : 'text-text-secondary hover:text-text-main hover:bg-surface/50'
+                ? 'text-ink bg-surface border border-hairline font-medium shadow-sm'
+                : 'text-ink-muted hover:text-ink hover:bg-surface'
             }`
           }
         >

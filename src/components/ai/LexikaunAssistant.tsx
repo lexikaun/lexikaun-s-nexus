@@ -5,13 +5,19 @@ import { chatWithLexikaun } from '../../services/ai';
 import { usePlanner } from '../../context/PlannerContext';
 import { useHabits } from '../../context/HabitContext';
 import { useMusic } from '../../context/MusicContext';
+import { FloatingPanel } from '../ui/FloatingPanel';
 
 interface LexikaunAssistantProps {
   isOpen: boolean;
   onClose: () => void;
+  initialPrompt?: string;
 }
 
-export const LexikaunAssistant: React.FC<LexikaunAssistantProps> = ({ isOpen, onClose }) => {
+export const LexikaunAssistant: React.FC<LexikaunAssistantProps> = ({
+  isOpen,
+  onClose,
+  initialPrompt = '',
+}) => {
   const [messages, setMessages] = useState<Content[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -29,36 +35,36 @@ export const LexikaunAssistant: React.FC<LexikaunAssistantProps> = ({ isOpen, on
     scrollToBottom();
   }, [messages, isTyping]);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (isOpen && initialPrompt) {
+      handleAutoSend(initialPrompt);
+    }
+  }, [isOpen, initialPrompt]);
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
-
-    const userText = input.trim();
-    setInput('');
-    
-    const newMessages = [...messages, { role: 'user', parts: [{ text: userText }] } as Content];
+  const handleAutoSend = async (promptText: string) => {
+    const newMessages = [
+      ...messages,
+      { role: 'user', parts: [{ text: promptText }] } as Content,
+    ];
     setMessages(newMessages);
     setIsTyping(true);
 
     try {
       const contextData = { goals, currentTask };
-      const response = await chatWithLexikaun(newMessages, userText, contextData);
-      
+      const response = await chatWithLexikaun(newMessages, promptText, contextData);
+
       const responseContent = response.candidates?.[0]?.content;
-      let finalResponseText = "Action completed.";
+      let finalResponseText = 'Ritual action completed.';
 
       if (responseContent) {
-        // Handle tool calls
         if (response.functionCalls && response.functionCalls.length > 0) {
           for (const call of response.functionCalls) {
             await handleToolCall(call.name, call.args);
             finalResponseText = `Executed ${call.name} successfully.`;
           }
         }
-        
-        // Handle text response
-        const textPart = responseContent.parts?.find(p => p.text);
+
+        const textPart = responseContent.parts?.find((p) => p.text);
         if (textPart && textPart.text) {
           finalResponseText = textPart.text;
         }
@@ -71,7 +77,69 @@ export const LexikaunAssistant: React.FC<LexikaunAssistantProps> = ({ isOpen, on
     } catch (error) {
       setMessages((prev) => [
         ...prev,
-        { role: 'model', parts: [{ text: 'I encountered an error connecting to my core. Please check your API key.' }] } as Content,
+        {
+          role: 'model',
+          parts: [
+            {
+              text: 'I encountered an error connecting to my core. Please verify your connection or API configuration.',
+            },
+          ],
+        } as Content,
+      ]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+
+    const userText = input.trim();
+    setInput('');
+
+    const newMessages = [
+      ...messages,
+      { role: 'user', parts: [{ text: userText }] } as Content,
+    ];
+    setMessages(newMessages);
+    setIsTyping(true);
+
+    try {
+      const contextData = { goals, currentTask };
+      const response = await chatWithLexikaun(newMessages, userText, contextData);
+
+      const responseContent = response.candidates?.[0]?.content;
+      let finalResponseText = 'Action completed.';
+
+      if (responseContent) {
+        if (response.functionCalls && response.functionCalls.length > 0) {
+          for (const call of response.functionCalls) {
+            await handleToolCall(call.name, call.args);
+            finalResponseText = `Executed ${call.name} successfully.`;
+          }
+        }
+
+        const textPart = responseContent.parts?.find((p) => p.text);
+        if (textPart && textPart.text) {
+          finalResponseText = textPart.text;
+        }
+
+        setMessages((prev) => [
+          ...prev,
+          { role: 'model', parts: [{ text: finalResponseText }] } as Content,
+        ]);
+      }
+    } catch (error) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'model',
+          parts: [
+            {
+              text: 'I encountered an error connecting to my core. Please verify your connection or API configuration.',
+            },
+          ],
+        } as Content,
       ]);
     } finally {
       setIsTyping(false);
@@ -81,7 +149,11 @@ export const LexikaunAssistant: React.FC<LexikaunAssistantProps> = ({ isOpen, on
   const handleToolCall = async (name: string, args: any) => {
     switch (name) {
       case 'createGoal':
-        await addGoal({ title: args.title, category: args.category, timeframe: 'monthly' });
+        await addGoal({
+          title: args.title,
+          category: args.category,
+          timeframe: 'monthly',
+        });
         break;
       case 'scheduleTask':
         await scheduleTask({
@@ -101,7 +173,11 @@ export const LexikaunAssistant: React.FC<LexikaunAssistantProps> = ({ isOpen, on
         });
         break;
       case 'playMusic':
-        const match = beats.find(b => b.genre?.toLowerCase().includes(args.query.toLowerCase()) || b.title.toLowerCase().includes(args.query.toLowerCase()));
+        const match = beats.find(
+          (b) =>
+            b.genre?.toLowerCase().includes(args.query.toLowerCase()) ||
+            b.title.toLowerCase().includes(args.query.toLowerCase())
+        );
         if (match) playBeat(match);
         break;
       default:
@@ -109,53 +185,61 @@ export const LexikaunAssistant: React.FC<LexikaunAssistantProps> = ({ isOpen, on
     }
   };
 
+  if (!isOpen) return null;
+
   return (
-    <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-[#27272a] bg-[#09090b]/95 backdrop-blur-3xl shadow-2xl transition-transform duration-300">
-      
+    <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-hairline bg-[#1E1C22]/95 backdrop-blur-2xl shadow-[0_16px_48px_rgba(0,0,0,0.45)] transition-transform duration-200 animate-in slide-in-from-right select-none">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-[#27272a] px-6 py-4">
-        <div className="flex items-center space-x-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400">
-            <Sparkles className="h-4 w-4" />
+      <div className="flex items-center justify-between border-b border-hairline px-5 py-3.5 bg-surface/40">
+        <div className="flex items-center space-x-2.5">
+          <div className="flex h-7 w-7 items-center justify-center rounded-[8px] bg-accent/15 text-accent border border-accent/30">
+            <Sparkles className="h-3.5 w-3.5" />
           </div>
           <div>
-            <h2 className="text-sm font-bold tracking-wider text-slate-100">ASK LEXIKAUN</h2>
-            <p className="text-[10px] uppercase tracking-widest text-emerald-500/70">System Active</p>
+            <h2 className="font-display text-xs font-medium tracking-wider uppercase text-ink">
+              Ask Lexikaun
+            </h2>
+            <p className="font-mono text-[9px] uppercase tracking-widest text-accent">
+              Global Rituals & AI Assistant
+            </p>
           </div>
         </div>
         <button
           onClick={onClose}
-          className="rounded-full p-2 text-slate-400 hover:bg-[#18181b] hover:text-slate-100 transition"
+          className="rounded-lg p-1.5 text-ink-muted hover:bg-surface hover:text-ink transition-colors cursor-pointer"
         >
-          <X className="h-5 w-5" />
+          <X className="h-4 w-4" />
         </button>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-none">
+      <div className="flex-1 overflow-y-auto p-5 space-y-4 font-sans text-xs">
         {messages.length === 0 && (
-          <div className="flex h-full flex-col items-center justify-center text-center space-y-4">
-            <Sparkles className="h-8 w-8 text-emerald-500/30" />
-            <p className="text-sm text-slate-400">
-              I am Lexikaun. How can I optimize your workflow today?
-            </p>
-            <div className="flex flex-wrap justify-center gap-2 mt-4">
-              <span className="rounded-full border border-[#27272a] bg-[#121214] px-3 py-1 text-xs text-slate-500">"Schedule gym at 6pm"</span>
-              <span className="rounded-full border border-[#27272a] bg-[#121214] px-3 py-1 text-xs text-slate-500">"Create a new goal"</span>
+          <div className="flex h-full flex-col items-center justify-center text-center space-y-3 p-4">
+            <div className="w-10 h-10 rounded-2xl bg-surface border border-hairline flex items-center justify-center text-accent shadow-sm">
+              <Sparkles className="h-5 w-5" />
             </div>
+            <h3 className="font-display text-sm text-ink font-normal">
+              How can I assist your workflow?
+            </h3>
+            <p className="text-[11px] text-ink-muted max-w-xs">
+              Review tasks across all domains, manage music sessions, or run your daily planning and shutdown rituals.
+            </p>
           </div>
         )}
-        
+
         {messages.map((msg, i) => (
           <div
             key={i}
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            className={`flex ${
+              msg.role === 'user' ? 'justify-end' : 'justify-start'
+            }`}
           >
             <div
-              className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+              className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 leading-relaxed ${
                 msg.role === 'user'
-                  ? 'bg-emerald-500 text-black rounded-tr-sm'
-                  : 'bg-[#121214] border border-[#27272a] text-slate-200 rounded-tl-sm'
+                  ? 'bg-accent text-canvas font-medium rounded-tr-sm shadow-sm'
+                  : 'bg-surface border border-hairline text-ink rounded-tl-sm shadow-sm'
               }`}
             >
               {msg.parts?.[0]?.text}
@@ -165,10 +249,10 @@ export const LexikaunAssistant: React.FC<LexikaunAssistantProps> = ({ isOpen, on
 
         {isTyping && (
           <div className="flex justify-start">
-            <div className="bg-[#121214] border border-[#27272a] rounded-2xl rounded-tl-sm px-4 py-4 flex items-center space-x-1.5">
-              <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-500/50 [animation-delay:-0.3s]"></div>
-              <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-500/50 [animation-delay:-0.15s]"></div>
-              <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-500/50"></div>
+            <div className="bg-surface border border-hairline rounded-2xl rounded-tl-sm px-3.5 py-3 flex items-center space-x-1.5 shadow-sm">
+              <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent/60 [animation-delay:-0.3s]"></div>
+              <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent/60 [animation-delay:-0.15s]"></div>
+              <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent/60"></div>
             </div>
           </div>
         )}
@@ -176,7 +260,7 @@ export const LexikaunAssistant: React.FC<LexikaunAssistantProps> = ({ isOpen, on
       </div>
 
       {/* Input */}
-      <div className="border-t border-[#27272a] p-4">
+      <div className="border-t border-hairline p-3.5 bg-surface/30">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -188,15 +272,15 @@ export const LexikaunAssistant: React.FC<LexikaunAssistantProps> = ({ isOpen, on
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type a command..."
-            className="w-full rounded-xl border border-[#27272a] bg-[#121214] py-3 pl-4 pr-12 text-sm text-slate-100 outline-none transition focus:border-emerald-500"
+            placeholder="Ask Lexikaun or run a ritual command..."
+            className="w-full rounded-[10px] border border-hairline bg-surface py-2.5 pl-3.5 pr-10 text-xs text-ink outline-none transition focus:border-accent/60 font-sans placeholder:text-ink-muted/50"
           />
           <button
             type="submit"
             disabled={!input.trim() || isTyping}
-            className="absolute right-2 flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500 text-black transition hover:bg-emerald-400 disabled:opacity-50"
+            className="absolute right-1.5 flex h-7 w-7 items-center justify-center rounded-[8px] bg-accent text-canvas transition hover:bg-accent/90 disabled:opacity-40 cursor-pointer shadow-sm"
           >
-            <Send className="h-4 w-4" />
+            <Send className="h-3.5 w-3.5" />
           </button>
         </form>
       </div>
