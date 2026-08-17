@@ -44,7 +44,7 @@ export const AppLayout: React.FC = () => {
   const isHome = location.pathname.startsWith('/home') || location.pathname === '/';
 
   const getSectionTitle = () => {
-    if (isHome) return 'Home';
+    if (isHome) return 'Planner';
     if (isMusic) return 'Music Studio';
     if (location.pathname.startsWith('/search')) return 'Search';
     if (location.pathname.startsWith('/settings')) return 'Settings';
@@ -56,9 +56,9 @@ export const AppLayout: React.FC = () => {
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Header */}
-        <header className="h-14 border-b border-hairline px-6 flex items-center justify-between shrink-0 select-none bg-canvas">
-          <div className="flex items-center gap-6">
-            <span className="font-display text-sm tracking-wider text-ink font-normal">
+        <header className="h-12 border-b border-hairline/60 px-5 flex items-center justify-between shrink-0 select-none bg-canvas">
+          <div className="flex items-center gap-5">
+            <span className="font-display text-[13px] tracking-wide text-ink/90 font-normal">
               {getSectionTitle()}
             </span>
 
@@ -71,10 +71,10 @@ export const AppLayout: React.FC = () => {
                     to={item.path}
                     end={item.path === '/music'}
                     className={({ isActive }) =>
-                      `px-3 py-1 text-xs rounded-[8px] font-sans transition-all ${
+                      `px-2.5 py-1 text-xs rounded-lg font-sans transition-all ${
                         isActive
-                          ? 'text-accent bg-surface border border-hairline font-medium shadow-sm'
-                          : 'text-ink-muted hover:text-ink hover:bg-surface/50'
+                          ? 'text-accent bg-surface border border-hairline/80 font-medium shadow-sm'
+                          : 'text-ink-muted hover:text-ink hover:bg-surface/40'
                       }`
                     }
                   >
@@ -86,32 +86,32 @@ export const AppLayout: React.FC = () => {
           </div>
 
           {/* Right Header Actions: Ask Lexikaun trigger & User profile */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <button
               onClick={() => {
                 setAssistantPrompt('');
                 setIsAssistantOpen(true);
               }}
               title="Open AI Assistant"
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-surface hover:bg-surface-hover border border-hairline text-ink-muted hover:text-ink text-xs font-sans transition-all cursor-pointer shadow-sm"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-surface/80 hover:bg-surface border border-hairline/80 text-ink-muted hover:text-ink text-xs font-sans transition-all cursor-pointer shadow-sm"
             >
               <Sparkles className="w-3.5 h-3.5 text-accent" />
               <span>Ask Lexikaun</span>
             </button>
 
-            <div className="flex items-center gap-2 text-xs font-sans text-ink-muted">
-              <div className="w-6 h-6 rounded-full bg-surface border border-hairline flex items-center justify-center text-ink text-[11px] font-mono">
+            <div className="flex items-center gap-2 text-xs font-sans text-ink-muted pl-1">
+              <div className="w-5 h-5 rounded-full bg-surface border border-hairline flex items-center justify-center text-ink text-[10px] font-mono">
                 {user?.displayName ? user.displayName.charAt(0).toUpperCase() : 'P'}
               </div>
-              <span className="max-w-[120px] truncate text-ink">{user?.displayName || 'Producer'}</span>
+              <span className="max-w-[110px] truncate text-ink text-[11.5px]">{user?.displayName || 'Producer'}</span>
             </div>
 
             <button
               onClick={() => logout()}
               title="Sign Out"
-              className="p-1.5 rounded-lg hover:bg-surface text-ink-muted hover:text-red-400 transition-colors cursor-pointer"
+              className="p-1 rounded-lg hover:bg-surface text-ink-muted/70 hover:text-red-400 transition-colors cursor-pointer"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-3.5 h-3.5" />
             </button>
           </div>
         </header>

@@ -11,7 +11,6 @@ import {
 import { DayColumn } from '../components/home/DayColumn';
 import { DayTimelinePanel } from '../components/home/DayTimelinePanel';
 import { TaskScheduleModal } from '../components/home/TaskScheduleModal';
-import { TaskCard } from '../components/home/TaskCard';
 import { useAuth } from '../context/AuthContext';
 import {
   subscribeToTasks,
@@ -61,7 +60,7 @@ export const Home: React.FC = () => {
   const [selectedChannelFilter, setSelectedChannelFilter] = useState<string>('all');
   const [showFilterDropdown, setShowFilterDropdown] = useState<boolean>(false);
 
-  // Timeline Panel collapsible drawer toggle (defaults to false for clean focus)
+  // Timeline Panel collapsible drawer toggle
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
 
   // Backlog Drawer Toggle
@@ -346,11 +345,11 @@ export const Home: React.FC = () => {
 
   return (
     <div className="w-full h-full flex flex-col min-h-0 bg-canvas text-ink overflow-hidden select-none">
-      {/* 1. Minimalist Top Bar Controls (Phase 6) */}
-      <header className="h-12 border-b border-hairline px-4 flex items-center justify-between shrink-0 bg-canvas">
+      {/* 1. Minimalist Top Bar Controls */}
+      <header className="h-11 border-b border-hairline/60 px-4 flex items-center justify-between shrink-0 bg-canvas">
         {/* Left / Center: Date Navigation & Date Range in IBM Plex Mono */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 bg-surface p-0.5 rounded-[8px] border border-hairline shadow-sm">
+          <div className="flex items-center gap-0.5 bg-surface/80 p-0.5 rounded-lg border border-hairline/70 shadow-sm">
             <button
               onClick={() => handleShiftDays(-1)}
               title="Previous day"
@@ -360,7 +359,7 @@ export const Home: React.FC = () => {
             </button>
             <button
               onClick={handleGoToToday}
-              className="px-2.5 py-0.5 rounded-md text-xs font-mono font-medium hover:bg-surface-hover text-ink transition-colors cursor-pointer"
+              className="px-2 py-0.5 rounded-md text-[11px] font-mono font-medium hover:bg-surface-hover text-ink transition-colors cursor-pointer"
             >
               Today
             </button>
@@ -373,7 +372,7 @@ export const Home: React.FC = () => {
             </button>
           </div>
 
-          <span className="font-mono text-xs text-ink-muted tracking-tight hidden sm:inline-block">
+          <span className="font-mono text-[11px] text-ink-muted/80 tracking-tight hidden sm:inline-block">
             {dateRangeLabel}
           </span>
         </div>
@@ -384,10 +383,10 @@ export const Home: React.FC = () => {
           <div className="relative">
             <button
               onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-              className={`px-2.5 py-1 rounded-[8px] transition-all cursor-pointer flex items-center gap-1.5 text-xs font-mono border ${
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs font-mono border ${
                 selectedChannelFilter !== 'all'
                   ? 'bg-accent/15 border-accent/40 text-accent font-medium shadow-sm'
-                  : 'bg-surface border-hairline text-ink-muted hover:text-ink hover:bg-surface-hover'
+                  : 'bg-surface/80 border-hairline/70 text-ink-muted hover:text-ink hover:bg-surface'
               }`}
             >
               <Filter className="w-3.5 h-3.5" />
@@ -396,7 +395,7 @@ export const Home: React.FC = () => {
 
             {showFilterDropdown && (
               <div className="absolute right-0 top-full mt-1.5 w-48 p-1.5 bg-surface border border-hairline rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.45)] z-40 space-y-1">
-                <div className="text-[9px] uppercase font-mono text-ink-muted px-2 py-1">
+                <div className="text-[9px] uppercase font-mono text-ink-muted/70 px-2 py-1">
                   Filter by Channel
                 </div>
                 <button
@@ -429,21 +428,21 @@ export const Home: React.FC = () => {
                       className="w-2 h-2 rounded-full shrink-0"
                       style={{ backgroundColor: c.color }}
                     />
-                    <span className="truncate font-mono">#{c.name}</span>
+                    <span className="truncate font-mono text-xs">#{c.name}</span>
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Calendars Toggle Button (Active state highlighted in warm amber) */}
+          {/* Calendars Toggle Button */}
           <button
             onClick={() => setIsCalendarOpen(!isCalendarOpen)}
             title={isCalendarOpen ? 'Hide timeline schedule' : 'Show timeline schedule'}
-            className={`p-1.5 px-2.5 rounded-[8px] transition-all cursor-pointer flex items-center gap-1.5 text-xs font-mono border ${
+            className={`p-1.5 px-2.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs font-mono border ${
               isCalendarOpen
                 ? 'bg-accent/15 border-accent/40 text-accent font-medium shadow-sm'
-                : 'bg-surface border-hairline text-ink-muted hover:text-ink hover:bg-surface-hover'
+                : 'bg-surface/80 border-hairline/70 text-ink-muted hover:text-ink hover:bg-surface'
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
@@ -454,7 +453,7 @@ export const Home: React.FC = () => {
 
       {/* Main Multi-Region Body: Multi-Day Stream Columns */}
       <div className="flex-1 flex min-h-0 overflow-hidden relative">
-        <main className="flex-1 flex overflow-x-auto overflow-y-hidden min-h-0 divide-x divide-hairline/40">
+        <main className="flex-1 flex overflow-x-auto overflow-y-hidden min-h-0 divide-x divide-hairline/30">
           {visibleDates.map((date) => {
             const dStr = date.toISOString().split('T')[0];
             const tasksForDay = expandedTasksByDate[dStr] || [];

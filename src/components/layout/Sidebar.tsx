@@ -61,22 +61,22 @@ export const Sidebar: React.FC = () => {
 
   return (
     <aside
-      className={`h-screen flex flex-col bg-canvas border-r border-hairline transition-all duration-200 ease-in-out shrink-0 select-none ${
-        collapsed ? 'w-16' : 'w-60'
+      className={`h-screen flex flex-col bg-canvas border-r border-hairline/60 transition-all duration-200 ease-in-out shrink-0 select-none ${
+        collapsed ? 'w-14' : 'w-56'
       }`}
     >
       {/* 1. Sidebar Header */}
       <div
-        className={`h-12 flex items-center border-b border-hairline px-3.5 ${
+        className={`h-12 flex items-center border-b border-hairline/60 px-3 ${
           collapsed ? 'justify-center' : 'justify-between'
         }`}
       >
         {!collapsed && (
-          <div className="flex items-center gap-2.5 pl-1 overflow-hidden">
+          <div className="flex items-center gap-2 pl-1 overflow-hidden">
             <div className="w-5 h-5 rounded-[6px] bg-surface border border-hairline flex items-center justify-center text-[10px] font-mono font-medium text-accent shrink-0 shadow-sm">
               LX
             </div>
-            <span className="font-display text-xs font-medium tracking-wider uppercase text-ink truncate">
+            <span className="font-display text-[13px] font-normal tracking-wide text-ink truncate">
               Lexikaun
             </span>
           </div>
@@ -95,7 +95,7 @@ export const Sidebar: React.FC = () => {
         {/* Core Destinations: Home, Today, Focus */}
         <div className="space-y-0.5">
           <div
-            className={`px-2.5 pb-1 text-[10px] uppercase font-mono tracking-wider text-ink-muted ${
+            className={`px-2.5 pb-1 text-[9px] uppercase font-mono tracking-widest text-ink-muted/60 ${
               collapsed ? 'text-center' : ''
             }`}
           >
@@ -110,7 +110,7 @@ export const Sidebar: React.FC = () => {
                   type="button"
                   onClick={item.onClick}
                   title={collapsed ? item.label : undefined}
-                  className={`w-full flex items-center rounded-[10px] text-xs font-sans text-ink-muted hover:text-ink hover:bg-surface transition-all duration-150 cursor-pointer ${
+                  className={`w-full flex items-center rounded-xl text-xs font-sans text-ink-muted hover:text-ink hover:bg-surface/50 transition-all duration-150 cursor-pointer ${
                     collapsed ? 'justify-center h-8' : 'gap-2.5 px-2.5 py-1.5 text-left'
                   }`}
                 >
@@ -125,12 +125,12 @@ export const Sidebar: React.FC = () => {
                 to={item.to}
                 title={collapsed ? item.label : undefined}
                 className={({ isActive }) =>
-                  `flex items-center rounded-[10px] text-xs font-sans transition-all duration-150 cursor-pointer ${
+                  `flex items-center rounded-xl text-xs font-sans transition-all duration-150 cursor-pointer ${
                     collapsed ? 'justify-center h-8' : 'gap-2.5 px-2.5 py-1.5'
                   } ${
                     isActive
-                      ? 'text-ink bg-surface border border-hairline font-medium shadow-sm'
-                      : 'text-ink-muted hover:text-ink hover:bg-surface'
+                      ? 'text-ink bg-surface border border-hairline/80 font-medium shadow-sm'
+                      : 'text-ink-muted hover:text-ink hover:bg-surface/50'
                   }`
                 }
               >
@@ -144,7 +144,7 @@ export const Sidebar: React.FC = () => {
         {/* Music Studio (Untouched) */}
         <div className="space-y-0.5">
           <div
-            className={`px-2.5 pb-1 text-[10px] uppercase font-mono tracking-wider text-accent/90 ${
+            className={`px-2.5 pb-1 text-[9px] uppercase font-mono tracking-widest text-accent/80 ${
               collapsed ? 'text-center' : ''
             }`}
           >
@@ -156,12 +156,12 @@ export const Sidebar: React.FC = () => {
               to={item.to}
               title={collapsed ? item.label : undefined}
               className={({ isActive }) =>
-                `flex items-center rounded-[10px] text-xs font-sans transition-all duration-150 cursor-pointer ${
+                `flex items-center rounded-xl text-xs font-sans transition-all duration-150 cursor-pointer ${
                   collapsed ? 'justify-center h-8' : 'gap-2.5 px-2.5 py-1.5'
                 } ${
                   isActive || (item.to === '/music' && location.pathname === '/music')
-                    ? 'text-accent bg-surface border border-hairline font-medium shadow-sm'
-                    : 'text-ink-muted hover:text-accent hover:bg-surface'
+                    ? 'text-accent bg-surface border border-hairline/80 font-medium shadow-sm'
+                    : 'text-ink-muted hover:text-accent hover:bg-surface/50'
                 }`
               }
             >
@@ -173,17 +173,17 @@ export const Sidebar: React.FC = () => {
       </nav>
 
       {/* 3. Bottom Utility Navigation */}
-      <div className="p-2 border-t border-hairline space-y-0.5">
+      <div className="p-2 border-t border-hairline/60 space-y-0.5">
         <NavLink
           to="/search"
           title={collapsed ? 'Search' : undefined}
           className={({ isActive }) =>
-            `flex items-center rounded-[10px] text-xs font-sans transition-all duration-150 cursor-pointer ${
+            `flex items-center rounded-xl text-xs font-sans transition-all duration-150 cursor-pointer ${
               collapsed ? 'justify-center h-8 w-full' : 'gap-2.5 px-2.5 py-1.5'
             } ${
               isActive
-                ? 'text-ink bg-surface border border-hairline font-medium shadow-sm'
-                : 'text-ink-muted hover:text-ink hover:bg-surface'
+                ? 'text-ink bg-surface border border-hairline/80 font-medium shadow-sm'
+                : 'text-ink-muted hover:text-ink hover:bg-surface/50'
             }`
           }
         >
@@ -194,12 +194,12 @@ export const Sidebar: React.FC = () => {
           to="/settings"
           title={collapsed ? 'Settings' : undefined}
           className={({ isActive }) =>
-            `flex items-center rounded-[10px] text-xs font-sans transition-all duration-150 cursor-pointer ${
+            `flex items-center rounded-xl text-xs font-sans transition-all duration-150 cursor-pointer ${
               collapsed ? 'justify-center h-8 w-full' : 'gap-2.5 px-2.5 py-1.5'
             } ${
               isActive
-                ? 'text-ink bg-surface border border-hairline font-medium shadow-sm'
-                : 'text-ink-muted hover:text-ink hover:bg-surface'
+                ? 'text-ink bg-surface border border-hairline/80 font-medium shadow-sm'
+                : 'text-ink-muted hover:text-ink hover:bg-surface/50'
             }`
           }
         >
