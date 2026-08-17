@@ -62,22 +62,22 @@ export const TapTempo: React.FC = () => {
     <div className="space-y-6 max-w-xl mx-auto text-center">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-medium tracking-tight text-text-main">Tap Tempo</h1>
-        <p className="text-xs text-text-secondary mt-1">
-          Manual tempo detection assist. Tap in rhythm with mouse click.
+        <h1 className="font-display text-2xl font-normal tracking-tight text-ink">Tap Tempo</h1>
+        <p className="text-xs text-ink-muted mt-1 font-sans">
+          Manual tempo detection assist. Tap in rhythm with your mouse or spacebar.
         </p>
       </div>
 
       {/* BPM Readout */}
-      <Card className="p-6">
-        <div className="text-xs uppercase tracking-wider text-text-secondary font-medium mb-1">
+      <Card className="p-6 bg-surface border border-hairline rounded-2xl shadow-[0_12px_32px_rgba(0,0,0,0.35)]">
+        <div className="text-[10px] uppercase font-mono tracking-wider text-ink-muted mb-1">
           Calculated Tempo
         </div>
-        <div className="text-4xl font-mono text-music-accent font-medium my-3">
+        <div className="text-5xl font-mono text-accent font-medium my-3 tracking-tight">
           {bpm ? bpm : '---'}{' '}
-          <span className="text-xs text-text-secondary font-mono font-normal">BPM</span>
+          <span className="text-sm text-ink-muted font-mono font-normal">BPM</span>
         </div>
-        <div className="text-xs text-text-secondary">
+        <div className="text-xs font-mono text-ink-muted">
           {tapCount > 1 ? `Based on ${tapCount} taps` : 'Tap at least twice to calculate'}
         </div>
       </Card>
@@ -85,23 +85,23 @@ export const TapTempo: React.FC = () => {
       {/* Interactive Tap Button */}
       <button
         onClick={handleTap}
-        className="w-full h-32 rounded-xl bg-surface hairline-border hover:border-music-accent/50 active:scale-[0.98] transition-all flex flex-col items-center justify-center cursor-pointer shadow-sm group select-none"
+        className="w-full h-36 rounded-2xl bg-surface border border-hairline hover:border-accent/60 hover:bg-surface-hover active:scale-[0.98] transition-all duration-150 flex flex-col items-center justify-center cursor-pointer shadow-[0_12px_32px_rgba(0,0,0,0.35)] group select-none"
       >
-        <span className="text-sm font-normal text-text-main group-hover:text-music-accent transition-colors">
-          TAP HERE IN TEMPO
+        <span className="font-display text-base font-medium text-ink group-hover:text-accent transition-colors">
+          TAP IN TEMPO
         </span>
-        <span className="text-xs text-text-secondary mt-1">Keep a steady beat</span>
+        <span className="text-xs font-mono text-ink-muted mt-1">Keep a steady beat</span>
       </button>
 
       {/* Controls */}
       <div className="flex items-center justify-center gap-3">
-        <Button variant="secondary" size="sm" onClick={handleReset} className="gap-1.5 text-xs">
+        <Button variant="secondary" size="sm" onClick={handleReset} className="gap-1.5 text-xs font-sans rounded-[10px]">
           <RotateCcw className="w-3.5 h-3.5" />
           <span>Reset</span>
         </Button>
         {bpm && (
-          <Button variant="secondary" size="sm" onClick={handleCopy} className="gap-1.5 text-xs">
-            {copied ? <Check className="w-3.5 h-3.5 text-text-main" /> : <Copy className="w-3.5 h-3.5" />}
+          <Button variant="secondary" size="sm" onClick={handleCopy} className="gap-1.5 text-xs font-sans rounded-[10px]">
+            {copied ? <Check className="w-3.5 h-3.5 text-accent" /> : <Copy className="w-3.5 h-3.5" />}
             <span>{copied ? 'Copied' : 'Copy BPM'}</span>
           </Button>
         )}

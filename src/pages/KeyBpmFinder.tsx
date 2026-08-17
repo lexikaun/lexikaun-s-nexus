@@ -9,7 +9,7 @@ export const KeyBpmFinder: React.FC = () => {
     bpm: 138.2,
     key: 'F#',
     scale: 'Minor',
-    confidence: 96
+    confidence: 96,
   });
   const [copied, setCopied] = useState(false);
 
@@ -22,7 +22,7 @@ export const KeyBpmFinder: React.FC = () => {
         bpm: 124.0,
         key: 'G',
         scale: 'Minor',
-        confidence: 93
+        confidence: 93,
       });
     }, 1200);
   };
@@ -38,74 +38,76 @@ export const KeyBpmFinder: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-xl font-medium tracking-tight text-text-main">Key & BPM Finder</h1>
-          <span className="text-[10px] px-2 py-0.5 rounded bg-surface hairline-border text-text-secondary font-mono flex items-center gap-1">
-            <Cpu className="w-3 h-3 text-music-accent" /> essentia.js (Wasm)
+        <div className="flex items-center gap-2.5">
+          <h1 className="font-display text-2xl font-normal tracking-tight text-ink">
+            Key & BPM Finder
+          </h1>
+          <span className="text-[10px] px-2 py-0.5 rounded-[6px] bg-surface border border-hairline text-ink-muted font-mono flex items-center gap-1">
+            <Cpu className="w-3 h-3 text-accent" /> essentia.js (Wasm)
           </span>
         </div>
-        <p className="text-xs text-text-secondary mt-1">
-          Standalone WebAssembly audio analysis in a client Web Worker.
+        <p className="text-xs text-ink-muted mt-1 font-sans">
+          Standalone WebAssembly audio analysis pipeline running client-side in a Web Worker.
         </p>
       </div>
 
       {/* Strict Decoupling Disclaimer */}
-      <div className="p-3.5 rounded-lg bg-surface hairline-border border-l-2 border-l-music-accent flex items-start gap-3">
-        <Info className="w-4 h-4 text-music-accent shrink-0 mt-0.5" />
-        <div className="text-xs text-text-secondary leading-relaxed">
-          <strong className="font-medium text-text-main">Zero-Persistence Tool:</strong> Tracks analyzed here are decoded client-side in memory and <span className="text-text-main">never written to Firestore or Storage</span>. Results do not link to Beats or Playlists.
+      <div className="p-4 rounded-2xl bg-surface border border-hairline border-l-2 border-l-accent flex items-start gap-3 shadow-sm">
+        <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+        <div className="text-xs text-ink-muted leading-relaxed font-sans">
+          <strong className="font-medium text-ink">Zero-Persistence DSP Tool:</strong> Tracks analyzed here are processed client-side in memory and <span className="text-ink font-medium">never written to Firestore or Storage</span>.
         </div>
       </div>
 
       {/* Upload / Dropzone */}
       <div
         onClick={handleSimulateDrop}
-        className="p-10 rounded-xl bg-surface hairline-border border-dashed border-border-main hover:border-music-accent/50 transition-all flex flex-col items-center justify-center text-center cursor-pointer group"
+        className="p-10 rounded-2xl bg-surface border border-dashed border-hairline hover:border-accent/50 hover:bg-surface-hover/50 transition-all duration-150 flex flex-col items-center justify-center text-center cursor-pointer group shadow-[0_12px_32px_rgba(0,0,0,0.35)]"
       >
-        <div className="w-12 h-12 rounded-full bg-bg-main hairline-border flex items-center justify-center mb-3 group-hover:border-music-accent transition-colors">
-          <Upload className="w-5 h-5 text-text-secondary group-hover:text-music-accent transition-colors" />
+        <div className="w-12 h-12 rounded-full bg-canvas border border-hairline flex items-center justify-center mb-3 group-hover:border-accent transition-colors shadow-sm">
+          <Upload className="w-5 h-5 text-ink-muted group-hover:text-accent transition-colors" />
         </div>
-        <h2 className="text-sm font-normal text-text-main mb-1">
-          {analyzing ? 'Analyzing track in Web Worker...' : 'Drop any reference audio file here'}
+        <h2 className="font-display text-sm font-normal text-ink mb-1">
+          {analyzing ? 'Analyzing track with essentia.js Web Worker...' : 'Drop any reference audio track here'}
         </h2>
-        <p className="text-xs text-text-secondary">Supports MP3, WAV, FLAC, AIFF up to 50MB</p>
+        <p className="text-xs text-ink-muted font-mono">Supports MP3, WAV, FLAC, AIFF up to 50MB</p>
       </div>
 
       {/* Analysis Result (Studio Readout) */}
       {result && (
-        <Card className="p-5">
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-border-main">
+        <Card className="p-5 bg-surface border border-hairline rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.45)]">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-hairline">
             <div>
-              <span className="text-xs uppercase tracking-wider text-text-secondary font-medium block">
+              <span className="text-[10px] uppercase font-mono tracking-wider text-ink-muted block">
                 Analysis Output
               </span>
-              <h3 className="text-sm font-normal text-text-main">reference_sample_02.wav</h3>
+              <h3 className="font-display text-sm font-normal text-ink">reference_sample_02.wav</h3>
             </div>
-            <Button size="sm" variant="secondary" onClick={handleCopy} className="gap-1.5 text-xs">
-              {copied ? <Check className="w-3.5 h-3.5 text-text-main" /> : <Copy className="w-3.5 h-3.5" />}
+            <Button size="sm" variant="secondary" onClick={handleCopy} className="gap-1.5 text-xs font-sans rounded-[10px]">
+              {copied ? <Check className="w-3.5 h-3.5 text-accent" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copied ? 'Copied' : 'Copy Values'}</span>
             </Button>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 rounded-lg bg-bg-main hairline-border text-center">
-              <span className="text-xs text-text-secondary block mb-1">Detected Tempo</span>
-              <span className="text-2xl font-mono text-music-accent font-medium">
-                {result.bpm} <span className="text-xs text-text-secondary">BPM</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="p-4 rounded-xl bg-canvas border border-hairline text-center shadow-inner">
+              <span className="text-xs text-ink-muted block mb-1 font-sans">Detected Tempo</span>
+              <span className="text-3xl font-mono text-accent font-medium tracking-tight">
+                {result.bpm} <span className="text-xs text-ink-muted">BPM</span>
               </span>
             </div>
 
-            <div className="p-4 rounded-lg bg-bg-main hairline-border text-center">
-              <span className="text-xs text-text-secondary block mb-1">Estimated Key</span>
-              <span className="text-2xl font-mono text-text-main font-medium">
-                {result.key} <span className="text-sm text-text-secondary font-sans">{result.scale}</span>
+            <div className="p-4 rounded-xl bg-canvas border border-hairline text-center shadow-inner">
+              <span className="text-xs text-ink-muted block mb-1 font-sans">Estimated Key</span>
+              <span className="text-3xl font-mono text-ink font-medium tracking-tight">
+                {result.key} <span className="text-sm text-accent font-display">{result.scale}</span>
               </span>
             </div>
           </div>
 
-          <div className="mt-3 text-center">
-            <span className="text-xs text-text-secondary">
-              Algorithm Confidence: {result.confidence}% (Harmonic Key Profile + Tempo Autocorrelation)
+          <div className="mt-3.5 text-center">
+            <span className="text-[11px] font-mono text-ink-muted/80">
+              Confidence: {result.confidence}% • Krumhansl-Schmuckler Harmonic Profiles
             </span>
           </div>
         </Card>

@@ -10,76 +10,84 @@ export const Settings: React.FC = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-medium tracking-tight text-text-main">Settings</h1>
-        <p className="text-xs text-text-secondary mt-1">
+        <h1 className="font-display text-2xl font-normal tracking-tight text-ink">
+          Settings
+        </h1>
+        <p className="text-xs text-ink-muted mt-1 font-sans">
           Personal preferences and system environment configuration.
         </p>
       </div>
 
       {/* Account Info */}
-      <Card className="p-4">
-        <div className="flex items-center gap-2 mb-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-          <Shield className="w-3.5 h-3.5" /> Account & Identity
+      <Card className="p-5 bg-surface border border-hairline rounded-2xl shadow-[0_12px_32px_rgba(0,0,0,0.35)]">
+        <div className="flex items-center gap-2 mb-3 text-[10px] font-mono font-medium text-ink-muted uppercase tracking-wider">
+          <Shield className="w-3.5 h-3.5 text-accent" /> Account & Identity
         </div>
-        <div className="space-y-2 text-xs">
-          <div className="flex justify-between py-2 border-b border-border-main/50">
-            <span className="text-text-secondary">Display Name</span>
-            <span className="text-text-main font-normal">{user?.displayName || 'Producer / Lexikaun'}</span>
+        <div className="space-y-2.5 text-xs font-sans">
+          <div className="flex justify-between py-2 border-b border-hairline/60">
+            <span className="text-ink-muted">Display Name</span>
+            <span className="text-ink font-medium">{user?.displayName || 'Producer / Lexikaun'}</span>
           </div>
-          <div className="flex justify-between py-2 border-b border-border-main/50">
-            <span className="text-text-secondary">Email</span>
-            <span className="text-text-main">{user?.email || 'guest@lexikaun.local'}</span>
+          <div className="flex justify-between py-2 border-b border-hairline/60">
+            <span className="text-ink-muted">Email</span>
+            <span className="text-ink font-mono text-[11px]">{user?.email || 'guest@lexikaun.local'}</span>
           </div>
           <div className="flex justify-between py-2">
-            <span className="text-text-secondary">Account Scope</span>
-            <span className="text-text-main font-mono text-xs">Single-user isolated</span>
+            <span className="text-ink-muted">Account Scope</span>
+            <span className="text-accent font-mono text-[11px]">Single-user isolated</span>
           </div>
         </div>
       </Card>
 
-      {/* Design System Locked Spec */}
-      <Card className="p-4">
-        <div className="flex items-center gap-2 mb-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-          <Palette className="w-3.5 h-3.5" /> Design System (Locked)
+      {/* Design System Spec */}
+      <Card className="p-5 bg-surface border border-hairline rounded-2xl shadow-[0_12px_32px_rgba(0,0,0,0.35)]">
+        <div className="flex items-center gap-2 mb-3 text-[10px] font-mono font-medium text-ink-muted uppercase tracking-wider">
+          <Palette className="w-3.5 h-3.5 text-accent" /> Design System (Floating Notecards)
         </div>
-        <div className="space-y-2 text-xs text-text-secondary leading-relaxed">
+        <div className="space-y-2 text-xs text-ink-muted leading-relaxed font-sans">
           <div className="flex items-center justify-between">
-            <span className="text-text-main font-normal">Theme: Option E ("Creative Producer")</span>
-            <span className="px-2 py-0.5 rounded bg-bg-main hairline-border text-red-main">Locked</span>
+            <span className="text-ink font-medium">Tactile Notecard Grammar</span>
+            <span className="px-2 py-0.5 rounded-[6px] bg-canvas border border-accent/30 text-accent font-mono text-[10px]">
+              Active v2
+            </span>
           </div>
           <p>
-            Standard palette: `#0B0B0A` background with `#E4423A` red accent. Music section exclusively utilizes `#FF5A46` warmer accent. No bold weights app-wide.
+            Palette tokens: Canvas (<span className="font-mono text-ink">#1E1C22</span>), Surface (<span className="font-mono text-ink">#27242C</span>), and Accent (<span className="font-mono text-accent">#D98E4A</span>). Editorial Fraunces titles with hardware IBM Plex Mono readouts.
           </p>
         </div>
       </Card>
 
       {/* Storage & DB Status */}
-      <Card className="p-4">
-        <div className="flex items-center gap-2 mb-3 text-xs font-medium text-text-secondary uppercase tracking-wider">
-          <Database className="w-3.5 h-3.5" /> Architecture
+      <Card className="p-5 bg-surface border border-hairline rounded-2xl shadow-[0_12px_32px_rgba(0,0,0,0.35)]">
+        <div className="flex items-center gap-2 mb-3 text-[10px] font-mono font-medium text-ink-muted uppercase tracking-wider">
+          <Database className="w-3.5 h-3.5 text-accent" /> Architecture
         </div>
-        <div className="space-y-2 text-xs text-text-secondary">
-          <div className="flex justify-between">
+        <div className="space-y-2.5 text-xs text-ink-muted font-sans">
+          <div className="flex justify-between py-1.5 border-b border-hairline/60">
             <span>Database</span>
-            <span className="text-text-main font-mono">Firebase Firestore (Additive schema)</span>
+            <span className="text-ink font-mono text-[11px]">Firebase Firestore (Realtime sync)</span>
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between py-1.5 border-b border-hairline/60">
             <span>Audio Storage</span>
-            <span className="text-text-main font-mono">Firebase Storage (users/{'{uid}'}/beats/...)</span>
+            <span className="text-ink font-mono text-[11px]">Firebase Storage / IndexedDB</span>
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between py-1.5">
             <span>Audio Analysis Engine</span>
-            <span className="text-text-main font-mono">essentia.js WebAssembly (Client-side)</span>
+            <span className="text-accent font-mono text-[11px]">essentia.js WebAssembly (Isolated Worker)</span>
           </div>
         </div>
       </Card>
 
       {/* Logout Action */}
       <div className="pt-2">
-        <Button variant="danger" onClick={() => logout()} className="w-full gap-2 text-xs">
+        <button
+          type="button"
+          onClick={() => logout()}
+          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-surface hover:bg-surface-hover border border-hairline text-red-400 hover:text-red-300 text-xs font-sans font-medium transition-all cursor-pointer shadow-sm"
+        >
           <LogOut className="w-4 h-4" />
           <span>Sign Out of Lexikaun</span>
-        </Button>
+        </button>
       </div>
     </div>
   );

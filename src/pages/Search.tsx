@@ -12,65 +12,71 @@ export const Search: React.FC = () => {
   ];
 
   const filtered = query
-    ? mockResults.filter(r => r.title.toLowerCase().includes(query.toLowerCase()) || r.type.toLowerCase().includes(query.toLowerCase()))
+    ? mockResults.filter(
+        (r) =>
+          r.title.toLowerCase().includes(query.toLowerCase()) ||
+          r.type.toLowerCase().includes(query.toLowerCase())
+      )
     : mockResults;
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-medium tracking-tight text-text-main">Search</h1>
-        <p className="text-xs text-text-secondary mt-1">
+        <h1 className="font-display text-2xl font-normal tracking-tight text-ink">
+          Search
+        </h1>
+        <p className="text-xs text-ink-muted mt-1 font-sans">
           Search across Tasks, Beats, Goals, and Habits.
         </p>
       </div>
 
       {/* Search Bar */}
       <div className="relative flex items-center">
-        <SearchIcon className="w-4 h-4 text-text-secondary absolute left-3.5" />
+        <SearchIcon className="w-4 h-4 text-ink-muted absolute left-3.5" />
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by title, BPM, goal, or tags..."
-          className="w-full bg-surface hairline-border rounded-lg pl-10 pr-4 py-2.5 text-sm text-text-main placeholder:text-text-secondary focus:outline-none focus:border-text-secondary transition-colors"
+          className="w-full bg-surface border border-hairline rounded-2xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-muted/50 focus:outline-none focus:border-accent/60 transition-all font-sans shadow-[0_12px_32px_rgba(0,0,0,0.35)]"
           autoFocus
         />
       </div>
 
-      {/* Results List (Plain rows with py-3 px-3 padding) */}
-      <div>
-        <span className="text-xs uppercase tracking-wider text-text-secondary font-medium block mb-2">
+      {/* Results List */}
+      <div className="space-y-2">
+        <span className="text-[10px] uppercase font-mono tracking-wider text-ink-muted block px-1">
           Results ({filtered.length})
         </span>
 
-        <div className="divide-y divide-border-main hairline-border rounded-lg bg-bg-main">
+        <div className="divide-y divide-hairline border border-hairline rounded-2xl bg-surface/40 overflow-hidden shadow-sm">
           {filtered.map((item, idx) => (
             <div
               key={idx}
-              className="py-3 px-3 flex items-center justify-between hover:bg-surface/40 transition-colors group cursor-pointer"
+              className="py-3 px-4 flex items-center justify-between hover:bg-surface-hover/80 transition-all duration-150 group cursor-pointer"
             >
-              <div className="flex items-center gap-3">
-                <div className="p-1.5 rounded bg-surface hairline-border text-text-secondary shrink-0">
+              <div className="flex items-center gap-3.5">
+                <div className="p-2 rounded-[8px] bg-surface border border-hairline text-ink-muted shrink-0 shadow-sm">
                   {item.type.includes('Music') || item.type.includes('Beat') ? (
-                    <Music className="w-3.5 h-3.5 text-music-accent" />
+                    <Music className="w-3.5 h-3.5 text-accent" />
                   ) : item.type.includes('Task') ? (
-                    <Briefcase className="w-3.5 h-3.5 text-text-main" />
+                    <Briefcase className="w-3.5 h-3.5 text-ink" />
                   ) : (
-                    <User className="w-3.5 h-3.5 text-text-main" />
+                    <User className="w-3.5 h-3.5 text-ink" />
                   )}
                 </div>
                 <div>
-                  <h3 className="text-sm font-normal text-text-main group-hover:text-red-main transition-colors">
+                  <h3 className="font-display text-sm font-normal text-ink group-hover:text-accent transition-colors">
                     {item.title}
                   </h3>
-                  <div className="flex items-center gap-2 text-xs text-text-secondary mt-0.5">
+                  <div className="flex items-center gap-2 text-xs text-ink-muted mt-0.5 font-sans">
                     <span>{item.type}</span>
                     <span>•</span>
-                    <span className="font-mono">{item.meta}</span>
+                    <span className="font-mono text-[11px]">{item.meta}</span>
                   </div>
                 </div>
               </div>
-              <ArrowRight className="w-3.5 h-3.5 text-text-secondary opacity-0 group-hover:opacity-100 transition-opacity" />
+              <ArrowRight className="w-3.5 h-3.5 text-ink-muted opacity-0 group-hover:opacity-100 group-hover:text-accent transition-all duration-150" />
             </div>
           ))}
         </div>
